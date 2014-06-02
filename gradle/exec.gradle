@@ -1,0 +1,17 @@
+ext.exec = { command ->
+    def output = new StringBuilder()
+    def error = new StringBuilder()
+
+    def cmd = ["/bin/sh", "-c", "${command}"].toArray()
+
+    def process = Runtime.runtime.exec(cmd as String[])
+
+    process.consumeProcessOutput(output, error)
+
+    def ret = process.waitFor()
+    if(0 != ret) {
+        throw new RuntimeException("Failed to execute command '${command}': ${error}")
+    }
+
+    return output.toString()
+}
