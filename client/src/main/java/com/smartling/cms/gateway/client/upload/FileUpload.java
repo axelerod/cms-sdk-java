@@ -64,7 +64,7 @@ public class FileUpload extends Response
         contentStream = value;
     }
 
-    protected InputStream getInputStream()
+    public InputStream getInputStream()
     {
         return this.contentStream;
     }
