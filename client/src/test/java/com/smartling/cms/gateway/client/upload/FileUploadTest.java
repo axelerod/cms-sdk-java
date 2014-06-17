@@ -13,72 +13,71 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smartling.cms.gateway.client;
+package com.smartling.cms.gateway.client.upload;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.CharEncoding;
 import org.apache.http.HttpEntity;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import com.smartling.cms.gateway.client.command.GetResourceCommand;
 
 public class FileUploadTest
 {
-    @Test
-    public void testHttpEntityIsMultiPart() throws Exception
-    {
-        FileUpload response = new FileUpload(mock(GetResourceCommand.class));
-        response.setContentStream(mock(InputStream.class));
-        HttpEntity entity = response.getHttpEntity();
-        assertTrue(entity.getContentType().getValue().startsWith("multipart/form-data"));
-    }
+    @Mock
+    private GetResourceCommand resourceCommand;
 
-    private boolean multipartEntityContainsText(HttpEntity entity, String text) throws IOException
+    @InjectMocks
+    private FileUpload response;
+
+    @Before
+    public void setUp()
     {
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        entity.writeTo(os);
-        String entityString = os.toString();
-        return entityString.contains(text);
+        MockitoAnnotations.initMocks(this);
     }
 
     @Test
-    public void testHttpEntityHasFilePart() throws Exception
+    public void entityContainsCorrectContentType() throws Exception
     {
-        FileUpload response = new FileUpload(mock(GetResourceCommand.class));
-        response.setContentStream(IOUtils.toInputStream("foo"));
+        response.setContentStream(new ByteArrayInputStream("ignored".getBytes()));
+
+        response.setContentType("some-content-type", "UTF-8");
         HttpEntity entity = response.getHttpEntity();
-        String sig = "\r\nContent-Disposition: form-data; name=\"file\"\r\n" +
-                "Content-Type: application/octet-stream\r\n";
-        assertTrue(multipartEntityContainsText(entity, sig));
+
+        assertEquals("some-content-type; charset=UTF-8", entity.getContentType().getValue());
     }
 
     @Test
-    public void testHttpEntityFilePartHasFilename() throws Exception
+    public void entityContainsResourceBody() throws Exception
     {
-        FileUpload response = new FileUpload(mock(GetResourceCommand.class));
-        response.setContentStream(IOUtils.toInputStream("foo"));
-        response.setFilename("file_name");
+        response.setContentStream(new ByteArrayInputStream("body".getBytes()));
+
         HttpEntity entity = response.getHttpEntity();
-        String sig = "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"file_name\"\r\n";
-        assertTrue(multipartEntityContainsText(entity, sig));
+
+        assertEquals("body", IOUtils.toString(entity.getContent()));
     }
 
     @Test
-    public void testHttpEntityFilePartHasContentType() throws Exception
+    public void entityEncodingIsChunkedAsStreamsAreUsed() throws Exception
     {
-        FileUpload response = new FileUpload(mock(GetResourceCommand.class));
-        response.setContentStream(IOUtils.toInputStream("foo"));
-        response.setContentType("text/plain", CharEncoding.UTF_8);
+        response.setContentStream(new ByteArrayInputStream("ignored".getBytes()));
+
         HttpEntity entity = response.getHttpEntity();
-        String sig = "\r\nContent-Disposition: form-data; name=\"file\"\r\n" +
-                "Content-Type: text/plain; charset=UTF-8\r\n";
-        assertTrue(multipartEntityContainsText(entity, sig));
+
+        assertTrue(entity.isChunked());
     }
 
     @Test(expected = NullPointerException.class)

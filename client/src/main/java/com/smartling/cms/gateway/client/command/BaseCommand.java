@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smartling.cms.gateway.client;
+package com.smartling.cms.gateway.client.command;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -26,13 +26,14 @@ import com.google.gson.JsonObject;
  *
  * @author p.ivashkov
  */
-public abstract class CommandBase
+public abstract class BaseCommand
 {
     public static enum Type
     {
         AUTHENTICATION_ERROR(-1),
-        GET_HTML(1),
-        GET_RESOURCE(2);
+        AUTHENTICATION_SUCCESS(1),
+        GET_HTML(2),
+        GET_RESOURCE(3);
         
         private int value;
         
@@ -51,7 +52,14 @@ public abstract class CommandBase
     private final String id;
     private final String uri;
 
-    protected CommandBase(Type type, String id, String uri)
+    protected BaseCommand(Type type)
+    {
+        this.type = type;
+        this.uri = "";
+        this.id = "";
+    }
+
+    protected BaseCommand(Type type, String id, String uri)
     {
         this.type = type;
         this.id = id;
@@ -83,7 +91,7 @@ public abstract class CommandBase
         if (obj == null || this.getClass() != obj.getClass())
             return false;
 
-        CommandBase command = (CommandBase)obj;
+        BaseCommand command = (BaseCommand)obj;
         return new EqualsBuilder()
             .append(getId(), command.getId())
             .append(getUri(), command.getUri())

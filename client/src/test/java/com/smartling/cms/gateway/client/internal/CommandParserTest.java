@@ -13,22 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smartling.cms.gateway.client.impl;
+package com.smartling.cms.gateway.client.internal;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
-import com.smartling.cms.gateway.client.AuthenticationErrorCommand;
+import com.smartling.cms.gateway.client.command.AuthenticationErrorCommand;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import com.smartling.cms.gateway.client.CommandBase;
-import com.smartling.cms.gateway.client.GetHtmlCommand;
-import com.smartling.cms.gateway.client.GetResourceCommand;
-import com.smartling.cms.gateway.client.internal.CommandParser;
-import com.smartling.cms.gateway.client.internal.CommandParserException;
+import com.smartling.cms.gateway.client.command.BaseCommand;
+import com.smartling.cms.gateway.client.command.GetHtmlCommand;
+import com.smartling.cms.gateway.client.command.GetResourceCommand;
 
 public class CommandParserTest
 {
@@ -44,7 +42,7 @@ public class CommandParserTest
     public void testParseMessageReturnsHtmlCommandRequest() throws Exception
     {
         String message = "{\"cmd\":\"getHtml\", \"uri\":\"fileuri\", \"rid\":\"0000\"}";
-        CommandBase request = commandParser.parse(message);
+        BaseCommand request = commandParser.parse(message);
 
         assertThat(request, instanceOf(GetHtmlCommand.class));
         assertThat(request.getId(), is("0000"));
@@ -55,7 +53,7 @@ public class CommandParserTest
     public void testParseMessageReturnsResourceCommandRequest() throws Exception
     {
         String message = "{\"cmd\":\"getResource\", \"uri\":\"fileuri\", \"rid\":\"0000\"}";
-        CommandBase request = commandParser.parse(message);
+        BaseCommand request = commandParser.parse(message);
 
         assertThat(request, instanceOf(GetResourceCommand.class));
         assertThat(request.getId(), is("0000"));
@@ -65,7 +63,7 @@ public class CommandParserTest
     @Test
     public void throwsParseAuthenticationErrorCommand() throws Exception
     {
-        CommandBase command = commandParser.parse("{\"cmd\": \"authenticationError\"}");
+        BaseCommand command = commandParser.parse("{\"cmd\": \"authenticationError\"}");
 
         assertThat(command, instanceOf(AuthenticationErrorCommand.class));
     }

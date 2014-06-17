@@ -13,19 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smartling.cms.gateway.client;
+package com.smartling.cms.gateway.client.internal;
 
-/**
- * Interface to implement event handlers from CmsGatewayClient, command channel.
- *
- * @author p.ivashkov
- */
-public interface CommandChannelHandler
+
+public class CommandChannelWebsocketTransportTest
 {
-    void onConnect();
-    void onDisconnect();
-    void onError(Throwable e);
-    
-    void onGetHtmlCommand(GetHtmlCommand request);
-    void onGetResourceCommand(GetResourceCommand request);
 }

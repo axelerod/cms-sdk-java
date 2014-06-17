@@ -13,23 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smartling.cms.gateway.client;
+package com.smartling.cms.gateway.client.command;
 
 /**
- * Request command for linked resource.
- *
- * @author p.ivashkov
+ * Notification sent on successful authentication.
  */
-public class GetResourceCommand extends CommandBase
+public class AuthenticationSuccessCommand extends BaseCommand
 {
-    public GetResourceCommand(String id, String uri)
+    public AuthenticationSuccessCommand()
     {
-        super(CommandBase.Type.GET_RESOURCE, id, uri);
+        super(Type.AUTHENTICATION_SUCCESS);
     }
 
     @Override
-    String getCommandName()
+    protected String getCommandName()
     {
-        return "getResource";
+        return "authenticationSuccess";
     }
 }

@@ -15,12 +15,11 @@
  */
 package com.smartling.cms.gateway.client.internal;
 
-
 import org.apache.commons.lang3.Validate;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.smartling.cms.gateway.client.CommandBase;
+import com.smartling.cms.gateway.client.command.BaseCommand;
 
 /**
  * Parser of commands, command channel.
@@ -29,17 +28,17 @@ import com.smartling.cms.gateway.client.CommandBase;
  */
 public class CommandParser
 {
-    public CommandBase parse(String value) throws CommandParserException
+    public BaseCommand parse(String value) throws CommandParserException
     {
         Validate.notNull(value);
 
         Gson gson = new GsonBuilder()
-            .registerTypeHierarchyAdapter(CommandBase.class, new CommandTypeAdapter())
+            .registerTypeHierarchyAdapter(BaseCommand.class, new CommandTypeAdapter())
             .create();
 
         try
         {
-            CommandBase command = gson.fromJson(value, CommandBase.class);
+            BaseCommand command = gson.fromJson(value, BaseCommand.class);
             Validate.notNull(command);
             return command;
         }

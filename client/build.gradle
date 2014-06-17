@@ -6,6 +6,8 @@ def artifactId = "cmsgateway-client"
 
 archivesBaseName = "cmsgateway-client"
 
+sourceCompatibility = '1.8'
+
 def getVersion() {
     return exec('git describe --tags --long --dirty').trim().replace("-", ".")
 }

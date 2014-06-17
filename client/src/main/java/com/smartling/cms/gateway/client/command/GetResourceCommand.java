@@ -13,26 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smartling.cms.gateway.client;
+package com.smartling.cms.gateway.client.command;
 
 import com.smartling.cms.gateway.client.command.BaseCommand;
 
 /**
- * Base for response class hierarchy.
+ * Request command for linked resource.
  *
  * @author p.ivashkov
  */
-public abstract class Response
+public class GetResourceCommand extends BaseCommand
 {
-    private BaseCommand request;
-
-    public Response(BaseCommand request)
+    public GetResourceCommand(String id, String uri)
     {
-        this.request = request;
+        super(BaseCommand.Type.GET_RESOURCE, id, uri);
     }
 
-    protected BaseCommand getRequest()
+    @Override
+    String getCommandName()
     {
-        return request;
+        return "getResource";
     }
 }

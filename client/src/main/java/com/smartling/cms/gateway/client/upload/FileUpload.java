@@ -13,14 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smartling.cms.gateway.client;
+package com.smartling.cms.gateway.client.upload;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.http.HttpEntity;
+import org.apache.http.client.entity.EntityBuilder;
 import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
+
+import com.smartling.cms.gateway.client.Response;
+import com.smartling.cms.gateway.client.command.BaseCommand;
 
 /**
  * Response with file upload.
@@ -37,18 +41,12 @@ import org.apache.http.entity.mime.MultipartEntityBuilder;
  */
 public class FileUpload extends Response
 {
-    private String filename;
     private ContentType contentType = ContentType.APPLICATION_OCTET_STREAM;
     private InputStream contentStream;
 
-    public FileUpload(CommandBase request)
+    public FileUpload(BaseCommand request)
     {
         super(request);
-    }
-
-    public void setFilename(String value)
-    {
-        filename = value;
     }
 
     public void setContentType(String mimeType, String encoding)
@@ -66,13 +64,20 @@ public class FileUpload extends Response
         contentStream = value;
     }
 
-    protected MultipartEntityBuilder getEntityBuilder()
+    protected InputStream getInputStream()
     {
-        return MultipartEntityBuilder.create()
-        .addBinaryBody("file", contentStream, contentType, filename);
+        return this.contentStream;
     }
 
-    public HttpEntity getHttpEntity()
+    protected EntityBuilder getEntityBuilder() throws IOException
+    {
+        return EntityBuilder.create()
+                .setContentType(contentType)
+                .chunked()
+                .setStream(contentStream);
+    }
+
+    public HttpEntity getHttpEntity() throws IOException
     {
         Validate.notNull(contentStream);
         return getEntityBuilder().build();

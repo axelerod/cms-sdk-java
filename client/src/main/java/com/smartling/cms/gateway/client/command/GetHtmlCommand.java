@@ -13,18 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smartling.cms.gateway.client;
+package com.smartling.cms.gateway.client.command;
+
+import com.smartling.cms.gateway.client.command.BaseCommand;
 
 /**
  * Request command for html file.
  *
  * @author p.ivashkov
  */
-public class GetHtmlCommand extends CommandBase
+public class GetHtmlCommand extends BaseCommand
 {
     public GetHtmlCommand(String id, String uri)
     {
-        super(CommandBase.Type.GET_HTML, id, uri);
+        super(BaseCommand.Type.GET_HTML, id, uri);
     }
 
     @Override

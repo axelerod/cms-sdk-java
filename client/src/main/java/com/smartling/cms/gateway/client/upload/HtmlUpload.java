@@ -13,17 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smartling.cms.gateway.client;
+package com.smartling.cms.gateway.client.upload;
 
 import java.io.IOException;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.CharEncoding;
 import org.apache.commons.lang3.Validate;
+import org.apache.http.client.entity.EntityBuilder;
 import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
 
 import com.google.gson.JsonObject;
+import com.smartling.cms.gateway.client.command.BaseCommand;
+import com.smartling.cms.gateway.client.upload.FileUpload;
 
 /**
  * Response for HTML file upload.
@@ -41,10 +43,9 @@ public class HtmlUpload extends FileUpload
 {
     private String baseUrl;
 
-    public HtmlUpload(GetResourceCommand request)
+    public HtmlUpload(BaseCommand request)
     {
         super(request);
-        setContentType("text/html", CharEncoding.UTF_8);
     }
 
     public void setBaseUrl(String value)
@@ -63,16 +64,14 @@ public class HtmlUpload extends FileUpload
     }
 
     @Override
-    protected MultipartEntityBuilder getEntityBuilder()
+    protected EntityBuilder getEntityBuilder() throws IOException
     {
-        MultipartEntityBuilder builder = super.getEntityBuilder();
-        if (baseUrl == null)
-            return builder;
+        JsonObject response = new JsonObject();
+        response.addProperty("baseUrl", baseUrl);
+        response.addProperty("body", IOUtils.toString(getInputStream()));
 
-        JsonObject meta = new JsonObject();
-        meta.addProperty("baseUrl", baseUrl);
-
-        return builder
-        .addTextBody("metadata", meta.toString(), ContentType.APPLICATION_JSON);
+        return EntityBuilder.create()
+                .setContentType(ContentType.APPLICATION_JSON)
+                .setText(response.toString());
     }
 }

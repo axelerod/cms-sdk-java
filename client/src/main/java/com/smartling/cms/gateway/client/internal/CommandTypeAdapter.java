@@ -23,20 +23,21 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonPrimitive;
-import com.smartling.cms.gateway.client.AuthenticationErrorCommand;
-import com.smartling.cms.gateway.client.CommandBase;
-import com.smartling.cms.gateway.client.GetHtmlCommand;
-import com.smartling.cms.gateway.client.GetResourceCommand;
+import com.smartling.cms.gateway.client.command.AuthenticationErrorCommand;
+import com.smartling.cms.gateway.client.command.AuthenticationSuccessCommand;
+import com.smartling.cms.gateway.client.command.BaseCommand;
+import com.smartling.cms.gateway.client.command.GetHtmlCommand;
+import com.smartling.cms.gateway.client.command.GetResourceCommand;
 
 /**
  * Factory for command classes, deserializing from JSON string.
  *
  * @author p.ivashkov
  */
-public class CommandTypeAdapter implements JsonDeserializer<CommandBase>
+public class CommandTypeAdapter implements JsonDeserializer<BaseCommand>
 {
     @Override
-    public CommandBase deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException
+    public BaseCommand deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException
     {
         JsonObject jsonObject = json.getAsJsonObject();
         JsonPrimitive prim = jsonObject.getAsJsonPrimitive("cmd");
@@ -56,6 +57,11 @@ public class CommandTypeAdapter implements JsonDeserializer<CommandBase>
             String fileUri = jsonObject.getAsJsonPrimitive("uri").getAsString();
             GetHtmlCommand command = new GetHtmlCommand(requestId, fileUri);
             return command;
+        }
+
+        if (commandName.equalsIgnoreCase("authenticationSuccess"))
+        {
+            return new AuthenticationSuccessCommand();
         }
 
         if (commandName.equalsIgnoreCase("authenticationError"))

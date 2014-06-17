@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smartling.cms.gateway.client;
+package com.smartling.cms.gateway.client.command;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -23,7 +23,7 @@ import org.junit.Test;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-public class CommandBaseTest
+public class BaseCommandTest
 {
 
     @Test
@@ -73,11 +73,11 @@ public class CommandBaseTest
         assertEquals("y", jsonObject.getAsJsonPrimitive("uri").getAsString());
     }
 
-    private static class FooCommand extends CommandBase
+    private static class FooCommand extends BaseCommand
     {
         public FooCommand(String id, String uri)
         {
-            super(CommandBase.Type.GET_RESOURCE, id, uri);
+            super(BaseCommand.Type.GET_RESOURCE, id, uri);
         }
 
         @Override
@@ -87,11 +87,11 @@ public class CommandBaseTest
         }
     }
 
-    private static class BarCommand extends CommandBase
+    private static class BarCommand extends BaseCommand
     {
         public BarCommand(String id, String uri)
         {
-            super(CommandBase.Type.GET_RESOURCE, id, uri);
+            super(BaseCommand.Type.GET_RESOURCE, id, uri);
         }
 
         @Override

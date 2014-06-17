@@ -13,26 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smartling.cms.gateway.client;
-
-import com.smartling.cms.gateway.client.command.BaseCommand;
+package com.smartling.cms.gateway.client.command;
 
 /**
- * Base for response class hierarchy.
- *
- * @author p.ivashkov
+ * Returned when server rejects user credentials
  */
-public abstract class Response
+public class AuthenticationErrorCommand extends BaseCommand
 {
-    private BaseCommand request;
-
-    public Response(BaseCommand request)
+    public AuthenticationErrorCommand()
     {
-        this.request = request;
+        super(BaseCommand.Type.AUTHENTICATION_ERROR);
     }
 
-    protected BaseCommand getRequest()
+    @Override
+    protected String getCommandName()
     {
-        return request;
+        return "authenticationError";
     }
 }

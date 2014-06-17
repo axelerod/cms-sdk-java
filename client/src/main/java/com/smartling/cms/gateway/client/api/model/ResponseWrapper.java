@@ -13,22 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smartling.cms.gateway.client;
-
+package com.smartling.cms.gateway.client.api.model;
 
 /**
- * Returned when server rejects user credentials
+ * Holds response status object.
+ * This is a wrapper object for JSON serialization.
  */
-public class AuthenticationErrorCommand extends CommandBase
+public class ResponseWrapper
 {
-    public AuthenticationErrorCommand()
+    private final ResponseStatus response;
+
+    public ResponseWrapper(ResponseStatus responseStatus)
     {
-        super(CommandBase.Type.AUTHENTICATION_ERROR, "", "");
+        this.response = responseStatus;
     }
 
-    @Override
-    protected String getCommandName()
+    public ResponseStatus getResponse()
     {
-        return "authenticationError";
+        return response;
     }
 }

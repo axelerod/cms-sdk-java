@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smartling.cms.gateway.client;
+package com.smartling.cms.gateway.client.command;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -23,9 +23,11 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
+import com.smartling.cms.gateway.client.Response;
+import com.smartling.cms.gateway.client.command.BaseCommand;
 
 /**
- * Error response that client sends back to server.
+ * Error response to notify server that client could not process request.
  *
  * {@code
  *  ErrorResponse error = new ErrorResponse(request);
@@ -40,7 +42,7 @@ public class ErrorResponse extends Response
     private int httpCode;
     private ArrayList<String> messages;
 
-    public ErrorResponse(CommandBase request)
+    public ErrorResponse(BaseCommand request)
     {
         super(request);
     }
@@ -61,7 +63,7 @@ public class ErrorResponse extends Response
         messages.add(value);
     }
 
-    String toJSONString()
+    public String toJSONString()
     {
         JsonObject obj = new JsonObject();
         obj.addProperty("state", "error");

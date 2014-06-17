@@ -15,6 +15,7 @@
  */
 package com.smartling.cms.gateway.client;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.concurrent.Future;
@@ -30,14 +31,23 @@ import javax.websocket.OnOpen;
 import javax.websocket.Session;
 
 import org.apache.commons.lang3.Validate;
-import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.nio.client.HttpAsyncClient;
 
+import com.smartling.cms.gateway.client.api.model.ResponseStatus;
+import com.smartling.cms.gateway.client.command.BaseCommand;
+import com.smartling.cms.gateway.client.command.CommandChannelHandler;
+import com.smartling.cms.gateway.client.command.ErrorResponse;
+import com.smartling.cms.gateway.client.command.GetHtmlCommand;
+import com.smartling.cms.gateway.client.command.GetResourceCommand;
 import com.smartling.cms.gateway.client.internal.CommandChannelTransport;
 import com.smartling.cms.gateway.client.internal.CommandChannelWebsocketTransport;
 import com.smartling.cms.gateway.client.internal.CommandParser;
+import com.smartling.cms.gateway.client.internal.ResponseStatusFuture;
+import com.smartling.cms.gateway.client.upload.FileUpload;
 
 /**
  * Client to CMS Gateway service public API.
@@ -60,9 +70,19 @@ public class CmsGatewayClient
     private String uploadChannelEndpoint = DEFAULT_UPLOAD_CHANNEL_ENDPOINT;
     private String apiKey;
     private String projectId;
+    private CommandChannelHandler handler;
     private CommandChannelTransport commandChannel;
-    private CommandChannelTransportEndpoint endpoint;
+    private CommandParser commandParser = new CommandParser();
     private HttpAsyncClient uploadChannel;
+    private FactoryHelper factoryHelper = new FactoryHelper();
+
+    static class FactoryHelper
+    {
+        public CommandChannelTransport commandChannelTransport()
+        {
+            return new CommandChannelWebsocketTransport();
+        }
+    }
 
     public CmsGatewayClient()
     {
@@ -77,19 +97,11 @@ public class CmsGatewayClient
         commandChannelEndpoint = Validate.notNull(value);
     }
 
-    public String getApiKey()
-    {
-        return apiKey;
-    }
     public void setApiKey(String value)
     {
         apiKey = value;
     }
 
-    public String getProjectId()
-    {
-        return projectId;
-    }
     public void setProjectId(String value)
     {
         projectId = value;
@@ -97,14 +109,14 @@ public class CmsGatewayClient
 
     public URI getCommandChannelUri() throws CmsGatewayClientException
     {
-        Validate.notNull(getApiKey(), "Missing apiKey");
-        Validate.notNull(getProjectId(), "Missing projectId");
+        Validate.notNull(apiKey, "Missing apiKey");
+        Validate.notNull(projectId, "Missing projectId");
 
         try
         {
             return new URIBuilder(getCommandChannelEndpoint())
-                .addParameter("key", getApiKey())
-                .addParameter("projectId", getProjectId())
+                .addParameter("key", apiKey)
+                .addParameter("projectId", projectId)
                 .build();
         }
         catch (URISyntaxException e)
@@ -125,12 +137,14 @@ public class CmsGatewayClient
 
     public URI getUploadChannelUri(String requestId) throws CmsGatewayClientException
     {
-        Validate.notNull(getApiKey(), "Missing apiKey");
+        Validate.notNull(apiKey, "Missing apiKey");
+        Validate.notNull(projectId, "Missing projectId");
 
         try
         {
             return new URIBuilder(getUploadChannelEndpoint())
-                .addParameter("key", getApiKey())
+                .addParameter("key", apiKey)
+                .addParameter("projectId", projectId)
                 .addParameter("rid", requestId)
                 .build();
         }
@@ -143,7 +157,7 @@ public class CmsGatewayClient
     public void setHandler(CommandChannelHandler handler)
     {
         Validate.notNull(handler);
-        endpoint = new CommandChannelTransportEndpoint(handler);
+        this.handler = handler;
     }
 
     public void openCommandChannel(CommandChannelHandler handler) throws CmsGatewayClientException
@@ -157,31 +171,28 @@ public class CmsGatewayClient
         commandChannel.send(error.toJSONString());
     }
 
-    public Future<HttpResponse> send(FileUpload response) throws CmsGatewayClientException
+    public Future<ResponseStatus<Void>> send(FileUpload response) throws CmsGatewayClientException, IOException
     {
+        if (null == uploadChannel)
+        {
+            CloseableHttpAsyncClient client = HttpAsyncClients.createDefault();
+            client.start();
+            uploadChannel = client;
+        }
+
         String requestId = response.getRequest().getId();
         URI uploadUri = getUploadChannelUri(requestId);
         HttpPost post = new HttpPost(uploadUri);
         post.setEntity(response.getHttpEntity());
-        return uploadChannel.execute(post, null);
+        return new ResponseStatusFuture(uploadChannel.execute(post, null));
     }
 
     @ClientEndpoint
     public class CommandChannelTransportEndpoint
     {
-        private CommandChannelHandler handler;
-        private CommandParser commandParser;
-
-        public CommandChannelTransportEndpoint(CommandChannelHandler handler)
-        {
-            this.handler = handler;
-            commandParser = new CommandParser();
-        }
-
         @OnOpen
         public void onOpen(Session session, EndpointConfig config)
         {
-            handler.onConnect();
         }
 
         @OnClose
@@ -216,7 +227,7 @@ public class CmsGatewayClient
         {
             try
             {
-                CommandBase request = getCommandParser().parse(message);
+                BaseCommand request = commandParser.parse(message);
                 onCommand(request);
             }
             catch (Throwable e)
@@ -225,21 +236,15 @@ public class CmsGatewayClient
             }
         }
 
-        CommandParser getCommandParser()
-        {
-            return commandParser;
-        }
-        void setCommandParser(CommandParser commandParser)
-        {
-            this.commandParser = commandParser;
-        }
-
-        private void onCommand(CommandBase request)
+        private void onCommand(BaseCommand request)
         {
             switch(request.getType())
             {
             case AUTHENTICATION_ERROR:
                 handler.onError(new CmsGatewayClientAuthenticationException());
+                break;
+            case AUTHENTICATION_SUCCESS:
+                handler.onConnect();
                 break;
             case GET_HTML:
                 handler.onGetHtmlCommand((GetHtmlCommand) request);
@@ -251,37 +256,16 @@ public class CmsGatewayClient
         }
     }
 
-    CommandChannelTransportEndpoint getTransportEndpoint()
-    {
-        return endpoint;
-    }
-
-    CommandChannelTransport getCommandChannelTransport()
-    {
-        return commandChannel;
-    }
-    void setCommandChannelTransport(CommandChannelTransport value)
-    {
-        Validate.notNull(value);
-        commandChannel = value;
-    }
-
-    void setUploadChannel(HttpAsyncClient value)
-    {
-        Validate.notNull(value);
-        uploadChannel = value;
-    }
-
     private void reopenCommandChannel() throws CmsGatewayClientException
     {
         if (commandChannel == null)
         {
-            commandChannel = new CommandChannelWebsocketTransport();
+            commandChannel = factoryHelper.commandChannelTransport();
         }
 
         try
         {
-            commandChannel.connectToServer(getTransportEndpoint(), getCommandChannelUri());
+            commandChannel.connectToServer(new CommandChannelTransportEndpoint(), getCommandChannelUri());
         }
         catch (Throwable e)
         {
