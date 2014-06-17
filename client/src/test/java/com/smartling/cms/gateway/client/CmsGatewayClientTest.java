@@ -20,7 +20,7 @@ import static org.hamcrest.core.StringContains.containsString;
 import static org.hamcrest.core.StringStartsWith.startsWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.*;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
@@ -43,6 +43,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpVersion;
 import org.apache.http.client.entity.EntityBuilder;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.ContentType;
 import org.apache.http.message.BasicStatusLine;
@@ -53,6 +54,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Matchers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import com.smartling.cms.gateway.client.api.model.ResponseStatus;
@@ -83,6 +85,9 @@ public class CmsGatewayClientTest
 
     @Mock
     private CmsGatewayClient.FactoryHelper factoryHelper;
+
+    @Mock
+    private Future<HttpResponse> futureHttpResponse;
 
     @InjectMocks
     private CmsGatewayClient client;
@@ -368,9 +373,8 @@ public class CmsGatewayClientTest
 
         HttpResponse response = mockHttpResponse(statusCode, responseJson);
 
-        Future<HttpResponse> future = mock(Future.class);
-        when(future.get()).thenReturn(response);
-        when(uploadChannel.execute(any(), any())).thenReturn(future);
+        when(futureHttpResponse.get()).thenReturn(response);
+        when(uploadChannel.execute(any(HttpUriRequest.class), Mockito.<FutureCallback<HttpResponse>>any())).thenReturn(futureHttpResponse);
 
         return client.send(fileUpload);
     }

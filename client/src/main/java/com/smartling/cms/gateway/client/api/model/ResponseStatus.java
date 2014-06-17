@@ -49,7 +49,7 @@ public class ResponseStatus<D>
         this.code = status.toString();
         if (message != null)
         {
-            this.messages = new ArrayList<>();
+            this.messages = new ArrayList<String>();
             this.messages.add(message);
         }
     }

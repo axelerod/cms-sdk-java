@@ -53,7 +53,11 @@ public class ResponseStatusFuture implements Future<ResponseStatus<Void>>
         {
             return responseStatus(httpResponse);
         }
-        catch (IOException | CmsGatewayClientException e)
+        catch (IOException e)
+        {
+            throw new ExecutionException(e);
+        }
+        catch (CmsGatewayClientException e)
         {
             throw new ExecutionException(e);
         }
@@ -67,7 +71,11 @@ public class ResponseStatusFuture implements Future<ResponseStatus<Void>>
         {
             return responseStatus(httpResponse);
         }
-        catch (IOException | CmsGatewayClientException e)
+        catch (IOException e)
+        {
+            throw new ExecutionException(e);
+        }
+        catch (CmsGatewayClientException e)
         {
             throw new ExecutionException(e);
         }
@@ -79,7 +87,9 @@ public class ResponseStatusFuture implements Future<ResponseStatus<Void>>
         InputStreamReader streamReader = new InputStreamReader(httpResponse.getEntity().getContent());
         Gson gson = new Gson();
         ResponseWrapper wrapper = gson.fromJson(streamReader, ResponseWrapper.class);
-        ResponseStatus responseStatus = wrapper.getResponse();
+
+        @SuppressWarnings("unchecked")
+        ResponseStatus<Void> responseStatus = wrapper.getResponse();
 
         if (statusCode != 200)
         {
