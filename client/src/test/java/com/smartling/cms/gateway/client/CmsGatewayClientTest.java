@@ -37,6 +37,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import javax.websocket.CloseReason;
+import javax.websocket.Session;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -88,6 +89,9 @@ public class CmsGatewayClientTest
 
     @Mock
     private Future<HttpResponse> futureHttpResponse;
+
+    @Mock
+    private Session session;
 
     @InjectMocks
     private CmsGatewayClient client;
@@ -274,7 +278,7 @@ public class CmsGatewayClientTest
     private void whenTransportGetsMessage(String message, BaseCommand commandObject) throws Exception
     {
         when(commandParser.parse(anyString())).thenReturn(commandObject);
-        getTransportEndpoint().onMessage(message, null);
+        getTransportEndpoint().onMessage(message, session);
     }
 
     @Test
@@ -288,9 +292,13 @@ public class CmsGatewayClientTest
     }
 
     @Test
-    public void callsOnErrorOnAuthenticationErrorCommand() throws Exception
+    public void closesAndcallsOnErrorOnAuthenticationErrorCommand() throws Exception
     {
         whenTransportGetsMessage("{\"cmd\": \"authenticationError\"}", new AuthenticationErrorCommand());
+
+        ArgumentCaptor<CloseReason> reasonCaptor =  ArgumentCaptor.forClass(null);
+        verify(session).close(reasonCaptor.capture());
+        assertThat(reasonCaptor.getValue().getCloseCode(), is(CloseReason.CloseCodes.NORMAL_CLOSURE));
 
         verify(handler).onError(any(CmsGatewayClientAuthenticationException.class));
 

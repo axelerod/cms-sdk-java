@@ -24,7 +24,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import com.smartling.cms.gateway.client.Response;
-import com.smartling.cms.gateway.client.command.BaseCommand;
 
 /**
  * Error response to notify server that client could not process request.

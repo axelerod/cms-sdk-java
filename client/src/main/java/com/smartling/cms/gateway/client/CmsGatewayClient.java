@@ -228,7 +228,7 @@ public class CmsGatewayClient
             try
             {
                 BaseCommand request = commandParser.parse(message);
-                onCommand(request);
+                onCommand(session, request);
             }
             catch (Throwable e)
             {
@@ -236,11 +236,18 @@ public class CmsGatewayClient
             }
         }
 
-        private void onCommand(BaseCommand request)
+        private void onCommand(Session session, BaseCommand request)
         {
             switch(request.getType())
             {
             case AUTHENTICATION_ERROR:
+
+                try
+                {
+                    session.close(new CloseReason(CloseCodes.NORMAL_CLOSURE, "authentication error"));
+                } catch (IOException e)
+                {}
+
                 handler.onError(new CmsGatewayClientAuthenticationException());
                 break;
             case AUTHENTICATION_SUCCESS:
