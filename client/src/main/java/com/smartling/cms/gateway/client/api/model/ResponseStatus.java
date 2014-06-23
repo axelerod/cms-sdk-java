@@ -54,16 +54,6 @@ public class ResponseStatus<D>
         }
     }
 
-    public Status getStatus()
-    {
-        return Status.findByName(code);
-    }
-
-    public boolean isSuccess()
-    {
-        return Status.SUCCESS.equals(getStatus());
-    }
-
     public void setCode(String code)
     {
         this.code = code;
