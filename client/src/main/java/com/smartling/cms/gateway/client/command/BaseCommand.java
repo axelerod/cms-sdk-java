@@ -19,8 +19,6 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
-import com.google.gson.JsonObject;
-
 /**
  * Base for command class hierarchy, command channel.
  *
@@ -112,13 +110,4 @@ public abstract class BaseCommand
     {
         return ToStringBuilder.reflectionToString(this);
     };
-
-    String toJSON()
-    {
-        JsonObject jsonObject = new JsonObject();
-        jsonObject.addProperty("cmd", getCommandName());
-        jsonObject.addProperty("rid", getId());
-        jsonObject.addProperty("uri", getUri());
-        return jsonObject.toString();
-    }
 }

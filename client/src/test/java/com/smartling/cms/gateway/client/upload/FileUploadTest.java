@@ -80,40 +80,29 @@ public class FileUploadTest
         assertTrue(entity.isChunked());
     }
 
-    @Test(expected = NullPointerException.class)
-    public void testSetContentTypeWhenMimeTypeIsNull() throws Exception
+    @Test(expected = IllegalArgumentException.class)
+    public void validatesContentTypeWhenEmpty() throws Exception
     {
-        FileUpload response = new FileUpload(mock(GetResourceCommand.class));
-        response.setContentType(null, "");
+        response.setContentType("", "UTF-8");
     }
 
     @Test
-    public void testSetContentTypeWithDefaultEncoding() throws Exception
+    public void returnsHttpEntityWithDefaultValues() throws Exception
     {
-        FileUpload response = new FileUpload(mock(GetResourceCommand.class));
-        response.setContentType("text/plain", null);
-    }
-
-    @Test
-    public void testGetHttpEntityWithDefaultValues() throws Exception
-    {
-        FileUpload response = new FileUpload(mock(GetResourceCommand.class));
         response.setContentStream(mock(InputStream.class));
         HttpEntity entity = response.getHttpEntity();
         assertNotNull(entity);
     }
 
     @Test(expected = NullPointerException.class)
-    public void testGetHttpEntityWhenMissingContentStream() throws Exception
+    public void throwsWhenMissingContentStream() throws Exception
     {
-        FileUpload response = new FileUpload(mock(GetResourceCommand.class));
         response.getHttpEntity();
     }
 
     @Test(expected = NullPointerException.class)
-    public void testSetContentStreamWhenNull() throws Exception
+    public void validatesContentStreamWhenNull() throws Exception
     {
-        FileUpload response = new FileUpload(mock(GetResourceCommand.class));
         response.setContentStream(null);
     }
 }

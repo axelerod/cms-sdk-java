@@ -15,12 +15,12 @@
  */
 package com.smartling.cms.gateway.client;
 
-import static org.hamcrest.core.Is.is;
-import static org.hamcrest.core.StringContains.containsString;
-import static org.hamcrest.core.StringStartsWith.startsWith;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.*;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
@@ -298,7 +298,7 @@ public class CmsGatewayClientTest
 
         ArgumentCaptor<CloseReason> reasonCaptor =  ArgumentCaptor.forClass(null);
         verify(session).close(reasonCaptor.capture());
-        assertThat(reasonCaptor.getValue().getCloseCode(), is(CloseReason.CloseCodes.NORMAL_CLOSURE));
+        assertThat(reasonCaptor.getValue().getCloseCode(), is((CloseReason.CloseCode)CloseReason.CloseCodes.NORMAL_CLOSURE));
 
         verify(handler).onError(any(CmsGatewayClientAuthenticationException.class));
 

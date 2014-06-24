@@ -51,7 +51,7 @@ public class FileUpload extends Response
 
     public void setContentType(String mimeType, String encoding)
     {
-        Validate.notNull(mimeType);
+        Validate.notEmpty(mimeType);
         contentType = ContentType.parse(mimeType);
         if (encoding != null) {
             contentType = contentType.withCharset(encoding);
