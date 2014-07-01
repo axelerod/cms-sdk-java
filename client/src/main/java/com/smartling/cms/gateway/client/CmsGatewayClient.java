@@ -36,7 +36,6 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
-import org.apache.http.nio.client.HttpAsyncClient;
 
 import com.smartling.cms.gateway.client.api.model.ResponseStatus;
 import com.smartling.cms.gateway.client.command.BaseCommand;
@@ -74,7 +73,7 @@ public class CmsGatewayClient implements Closeable
     private CommandChannelHandler handler;
     private CommandChannelTransport commandChannel;
     private CommandParser commandParser = new CommandParser();
-    private HttpAsyncClient uploadChannel;
+    private CloseableHttpAsyncClient uploadChannel;
     private FactoryHelper factoryHelper = new FactoryHelper();
 
     static class FactoryHelper
@@ -167,13 +166,9 @@ public class CmsGatewayClient implements Closeable
         reopenCommandChannel();
     }
 
-    /**
-     * Closes command channel.
-     *
-     * This method does not cancel active uploads. An active upload should be cancelled with corresponding {@link java.util.concurrent.Future#cancel(boolean)}.
-     */
     public void close() throws IOException
     {
+        uploadChannel.close();
         commandChannel.close();
     }
 

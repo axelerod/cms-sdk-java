@@ -47,8 +47,8 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.ContentType;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.message.BasicStatusLine;
-import org.apache.http.nio.client.HttpAsyncClient;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -79,7 +79,7 @@ public class CmsGatewayClientTest
     private CommandChannelTransport transport;
 
     @Mock
-    private HttpAsyncClient uploadChannel;
+    private CloseableHttpAsyncClient uploadChannel;
 
     @Mock
     private CommandParser commandParser;
