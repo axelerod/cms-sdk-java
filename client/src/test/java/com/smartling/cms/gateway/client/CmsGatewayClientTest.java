@@ -17,15 +17,13 @@ package com.smartling.cms.gateway.client;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.startsWith;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -39,6 +37,7 @@ import java.util.concurrent.Future;
 import javax.websocket.CloseReason;
 import javax.websocket.Session;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpVersion;
@@ -52,16 +51,12 @@ import org.apache.http.message.BasicStatusLine;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
 
 import com.smartling.cms.gateway.client.api.model.ResponseStatus;
-import com.smartling.cms.gateway.client.command.AuthenticationErrorCommand;
-import com.smartling.cms.gateway.client.command.AuthenticationSuccessCommand;
-import com.smartling.cms.gateway.client.command.BaseCommand;
 import com.smartling.cms.gateway.client.command.CommandChannelHandler;
 import com.smartling.cms.gateway.client.command.ErrorResponse;
 import com.smartling.cms.gateway.client.command.GetHtmlCommand;
@@ -72,20 +67,20 @@ import com.smartling.cms.gateway.client.upload.FileUpload;
 
 public class CmsGatewayClientTest
 {
+    private static final URI STUB_COMMAND_CHANNEL_URI = URI.create("some:command_channel_uri");
+    private static final URI STUB_UPLOAD_CHANNEL_URI = URI.create("some_upload_channel_uri?projectId=some+project+id");
+
     @Mock
     private CommandChannelHandler handler;
 
     @Mock
-    private CommandChannelTransport transport;
+    private CommandChannelTransport commandChannel;
 
     @Mock
     private CloseableHttpAsyncClient uploadChannel;
 
-    @Mock
+    @Spy
     private CommandParser commandParser;
-
-    @Mock
-    private CmsGatewayClient.FactoryHelper factoryHelper;
 
     @Mock
     private Future<HttpResponse> futureHttpResponse;
@@ -93,270 +88,202 @@ public class CmsGatewayClientTest
     @Mock
     private Session session;
 
-    @InjectMocks
     private CmsGatewayClient client;
 
 
     @Before
-    public void setup()
+    public void setup() throws Exception
     {
         MockitoAnnotations.initMocks(this);
-        
-        client.setApiKey("api_key");
-        client.setProjectId("project_id");
 
-        when(factoryHelper.commandChannelTransport()).thenReturn(transport);
+        client = new CmsGatewayClient(STUB_COMMAND_CHANNEL_URI, STUB_UPLOAD_CHANNEL_URI, commandChannel, uploadChannel, commandParser);
     }
     
-    @Test(expected = NullPointerException.class)
-    public void checksMissingPropertiesOnGetCommandChannelUri() throws Exception
-    {
-        CmsGatewayClient client = new CmsGatewayClient();
-        // needs apiKey and projectId
-        client.getCommandChannelUri();
-    }
-
-    @Test
-    public void setsDefaultCommandChannelEndpoint() throws Exception
-    {
-        URI uri = client.getCommandChannelUri();
-
-        assertThat(uri.toString(), startsWith("ws://localhost/cmd/websocket?"));
-        assertThat(uri.toString(), containsString("key=api_key"));
-        assertThat(uri.toString(), containsString("projectId=project_id"));
-    }
-
-    @Test
-    public void setsCustomCommandChannelEndpoint() throws Exception
-    {
-        client.setCommandChannelEndpoint("xx://foobar");
-        URI uri = client.getCommandChannelUri();
-        assertThat(uri.toString(), startsWith("xx://foobar?"));
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void validatesParametersOnSetCommandChannelEndpointWhenNull()
-    {
-        client.setCommandChannelEndpoint(null);
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void checksMissingPropertiesOnGetUploadChannelUri() throws Exception
-    {
-        CmsGatewayClient client = new CmsGatewayClient();
-        // needs apiKey and projectId
-        client.getUploadChannelUri("some request id");
-    }
-
-    @Test
-    public void setsDefaultUploadChannelEndpoint() throws Exception
-    {
-        URI uri = client.getUploadChannelUri("rid_value");
-
-        assertThat(uri.toString(), startsWith("http://localhost/upload?"));
-        assertThat(uri.toString(), containsString("key=api_key"));
-        assertThat(uri.toString(), containsString("projectId=project_id"));
-        assertThat(uri.toString(), containsString("rid=rid_value"));
-    }
-
-    @Test
-    public void setsCustomUploadChannelEndpoint() throws Exception
-    {
-        client.setUploadChannelEndpoint("xx://foobar");
-
-        URI uri = client.getUploadChannelUri("00");
-
-        assertThat(uri.toString(), startsWith("xx://foobar?"));
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void validatesParametersOnSetUploadChannelEndpointWhenNull()
-    {
-        CmsGatewayClient client = new CmsGatewayClient();
-        client.setUploadChannelEndpoint(null);
-    }
-
 	@Test
-	public void connectsWebsocketToOpenCommandChannel() throws Exception
+	public void opensWebsocketConnectionOnConnect() throws Exception
 	{
-        URI uri = client.getCommandChannelUri();
-	    client.openCommandChannel(handler);
-	    verify(transport).connectToServer(anyObject(), eq(uri));
+	    client.connect(handler);
+
+	    verify(commandChannel).connectToServer(anyObject(), eq(STUB_COMMAND_CHANNEL_URI));
 	}
 
-	@Test(expected = CmsGatewayClientException.class)
-    public void testOpenCommandChannelWhenFailedOnInvoke() throws Exception
+    @Test
+    public void startsHttpClientOnConnect() throws Exception
     {
-        doThrow(Throwable.class).when(transport).connectToServer(any(Class.class), any(URI.class));
-        client.openCommandChannel(handler);
+        client.connect(handler);
+
+        verify(uploadChannel).start();
     }
 
-    private CmsGatewayClient.CommandChannelTransportEndpoint getTransportEndpoint() throws Exception
+    @Test(expected = CmsGatewayClientException.class)
+    public void throwsExceptionOnConnectWhenExceptionInCommandChannel() throws Exception
+    {
+        doThrow(Exception.class).when(commandChannel).connectToServer(any(), any());
+
+        client.connect(handler);
+    }
+
+    private CmsGatewayClient.CommandChannelTransportEndpoint getCommandChannelTransportEndpoint() throws Exception
     {
         ArgumentCaptor<CmsGatewayClient.CommandChannelTransportEndpoint> captor = ArgumentCaptor.forClass(CmsGatewayClient.CommandChannelTransportEndpoint.class);
 
-        client.openCommandChannel(handler);
+        client.connect(handler);
 
-        verify(transport).connectToServer(captor.capture(), any(URI.class));
+        verify(commandChannel).connectToServer(captor.capture(), any(URI.class));
         return captor.getValue();
     }
 
-	@Test(expected = NullPointerException.class)
-    public void verifiesParametersToSetCommandHandlerWhenNull() throws Exception
+    @Test
+    public void callsCommandHandlerOnDisconnectWhenTransportClosedNormally() throws Exception
     {
-        client.setHandler(null);
+        CloseReason reason = new CloseReason(CloseReason.CloseCodes.NORMAL_CLOSURE, null);
+
+        getCommandChannelTransportEndpoint().onClose(null, reason);
+
+        verify(handler, only()).onDisconnect();
     }
 
-	@Test
-    public void doesNothingOnConnect() throws Exception
+    @Test
+    public void autoReconnectsCommandChannelWhenTransportClosedAbnormally() throws Exception
     {
-        getTransportEndpoint().onOpen(null, null);
+        CloseReason reason = new CloseReason(CloseReason.CloseCodes.CLOSED_ABNORMALLY, null);
+
+        getCommandChannelTransportEndpoint().onClose(null, reason);
+
+        verify(commandChannel, times(2)).connectToServer(anyObject(), eq(STUB_COMMAND_CHANNEL_URI));
+        verifyZeroInteractions(handler);
+    }
+
+    @Test
+    public void disconnectsAfterFailedAttemptToReconnectCommandChannel() throws Exception
+    {
+        CloseReason reason = new CloseReason(CloseReason.CloseCodes.CLOSED_ABNORMALLY, null);
+
+        CmsGatewayClient.CommandChannelTransportEndpoint transportEndpoint = getCommandChannelTransportEndpoint();
+
+        doThrow(Throwable.class).when(commandChannel).connectToServer(any(), any());
+
+        transportEndpoint.onClose(null, reason);
+
+        verify(handler).onError(any());
+        verify(handler).onDisconnect();
         verifyNoMoreInteractions(handler);
     }
 
-	@Test
-    public void callsCommandHandlerOnDisconnectWhenClosedNormally() throws Exception
-    {
-        CloseReason.CloseCodes closeCode = CloseReason.CloseCodes.NORMAL_CLOSURE;
-        CloseReason reason = new CloseReason(closeCode, null);
-        getTransportEndpoint().onClose(null, reason);
-        verify(handler).onDisconnect();
-    }
-
     @Test
-    public void reconnectsOnAbnormalDisconnect() throws Exception
-    {
-        URI uri = client.getCommandChannelUri();
-        // first connectToServer
-        CmsGatewayClient.CommandChannelTransportEndpoint transportEndpoint = getTransportEndpoint();
-
-        CloseReason.CloseCodes closeCode = CloseReason.CloseCodes.CLOSED_ABNORMALLY;
-        CloseReason reason = new CloseReason(closeCode, null);
-        // second connectToServer
-        transportEndpoint.onClose(null, reason);
-
-        verify(transport, times(2)).connectToServer(anyObject(), eq(uri));
-        verifyZeroInteractions(handler);
-    }
-
-    @Test
-    public void notifiesHandlerOnAbnormalDisconnectWithErrorReconnecting() throws Exception
-    {
-        CmsGatewayClient.CommandChannelTransportEndpoint transportEndpoint = getTransportEndpoint();
-        verify(transport).connectToServer(any(), any(URI.class));
-
-        CloseReason.CloseCodes closeCode = CloseReason.CloseCodes.PROTOCOL_ERROR;
-        CloseReason reason = new CloseReason(closeCode, null);
-        doThrow(Throwable.class).when(transport).connectToServer(any(), any(URI.class));
-
-        transportEndpoint.onClose(null, reason);
-
-        verify(handler).onError(any(Throwable.class));
-        verify(handler).onDisconnect();
-        verifyZeroInteractions(handler);
-    }
-
-    @Test
-    public void callsCommandHandlerOnError() throws Exception
+    public void forwardsTransportErrorToCommandHandler() throws Exception
     {
         Throwable e = mock(Throwable.class);
-        getTransportEndpoint().onError(null, e);
-        verify(handler).onError(e);
-        verifyNoMoreInteractions(handler);
+
+        getCommandChannelTransportEndpoint().onError(null, e);
+
+        verify(handler, only()).onError(e);
     }
 
     @Test
-    public void callsCommandHandlerOnErrorForCorruptMessage() throws Exception
+    public void forwardsParserErrorToCommandHandler() throws Exception
     {
-        doThrow(Throwable.class).when(commandParser).parse(any(String.class));
+        doThrow(Throwable.class).when(commandParser).parse(any());
 
-        getTransportEndpoint().onMessage(any(String.class), null);
+        getCommandChannelTransportEndpoint().onMessage(null, null);
 
-        verify(handler).onError(any(Throwable.class));
-    }
-
-    private void whenTransportGetsMessage(String message, BaseCommand commandObject) throws Exception
-    {
-        when(commandParser.parse(anyString())).thenReturn(commandObject);
-        getTransportEndpoint().onMessage(message, session);
+        verify(handler, only()).onError(any());
     }
 
     @Test
-    public void callCommandHandlerOnConnectWhenAuthenticatedSuccessfully() throws Exception
+    public void callsCommandHandlerOnConnectWhenAuthenticatedSuccessfully() throws Exception
     {
-        whenTransportGetsMessage("{\"cmd\": \"authenticationSuccess\"}", new AuthenticationSuccessCommand());
+        getCommandChannelTransportEndpoint().onMessage("{\"cmd\": \"authenticationSuccess\"}", null);
 
-        verify(handler).onConnect();
-
-        verifyNoMoreInteractions(handler);
+        verify(handler, only()).onConnect();
     }
 
     @Test
-    public void closesAndcallsOnErrorOnAuthenticationErrorCommand() throws Exception
+    public void closesWebsocketAndCallsOnErrorWhenAuthenticationFailed() throws Exception
     {
-        whenTransportGetsMessage("{\"cmd\": \"authenticationError\"}", new AuthenticationErrorCommand());
+        getCommandChannelTransportEndpoint().onMessage("{\"cmd\": \"authenticationError\"}", session);
 
         ArgumentCaptor<CloseReason> reasonCaptor =  ArgumentCaptor.forClass(null);
         verify(session).close(reasonCaptor.capture());
-        assertThat(reasonCaptor.getValue().getCloseCode(), is((CloseReason.CloseCode)CloseReason.CloseCodes.NORMAL_CLOSURE));
+        assertThat(reasonCaptor.getValue().getCloseCode(), is(CloseReason.CloseCodes.NORMAL_CLOSURE));
 
-        verify(handler).onError(any(CmsGatewayClientAuthenticationException.class));
-
-        verifyNoMoreInteractions(handler);
-    }
-    
-    @Test
-    public void callsHandlerOnGetHtmlCommand() throws Exception
-    {
-        GetHtmlCommand command = mock(GetHtmlCommand.class);
-        when(command.getType()).thenReturn(BaseCommand.Type.GET_HTML);
-        when(commandParser.parse(anyString())).thenReturn(command);
-
-        getTransportEndpoint().onMessage(anyString(), null);
-
-        verify(handler).onGetHtmlCommand(command);
+        verify(handler, only()).onError(any(CmsGatewayClientAuthenticationException.class));
     }
 
     @Test
-    public void callsHandlerOnGetResourceCommand() throws Exception
+    public void forwardsGetHtmlCommandToCommandHandler() throws Exception
     {
-        GetResourceCommand command = mock(GetResourceCommand.class);
-        when(command.getType()).thenReturn(BaseCommand.Type.GET_RESOURCE);
-        when(commandParser.parse(anyString())).thenReturn(command);
+        getCommandChannelTransportEndpoint().onMessage("{\"cmd\":\"getHtml\", \"rid\":\"some request id\", \"uri\":\"some file uri\"}", null);
 
-        getTransportEndpoint().onMessage(anyString(), null);
-
-        verify(handler).onGetResourceCommand(command);
+        GetHtmlCommand command = getGetHtmlCommand();
+        assertThat(command.getId(), is("some request id"));
+        assertThat(command.getUri(), is("some file uri"));
     }
-    
-    @Test
-    public void implementsApiForErrorResponse() throws Exception
+
+    private GetHtmlCommand getGetHtmlCommand()
     {
-        GetResourceCommand request = new GetResourceCommand("0000", "fileuri");
-        ErrorResponse error = new ErrorResponse(request);
-        String jsonString = error.toJSONString();
+        ArgumentCaptor<GetHtmlCommand> captor = ArgumentCaptor.forClass(null);
+
+        verify(handler, only()).onGetHtmlCommand(captor.capture());
+
+        return captor.getValue();
+    }
+
+    @Test
+    public void forwardsGetResourceCommandtoCommandHandler() throws Exception
+    {
+        getCommandChannelTransportEndpoint().onMessage("{\"cmd\":\"getResource\", \"rid\":\"some request id\", \"uri\":\"some file uri\"}", null);
+
+        GetResourceCommand command = getGetResourceCommand();
+        assertThat(command.getId(), is("some request id"));
+        assertThat(command.getUri(), is("some file uri"));
+    }
+
+    private GetResourceCommand getGetResourceCommand()
+    {
+        ArgumentCaptor<GetResourceCommand> captor = ArgumentCaptor.forClass(null);
+
+        verify(handler, only()).onGetResourceCommand(captor.capture());
+
+        return captor.getValue();
+    }
+
+    @Test
+    public void sendsErrorResponseJsonToCommandChannel()
+    {
+        ErrorResponse error = new ErrorResponse(new GetResourceCommand("some request id", "some file uri"));
+        String expectedJson = error.toJSONString();
+
         client.send(error);
-        verify(transport).send(jsonString);
+
+        verify(commandChannel).send(expectedJson);
     }
 
     @Test
-    public void implementsApiForFileUpload() throws Exception
+    public void postsFileContentsToUploadChannel() throws Exception
     {
-        GetResourceCommand request = new GetResourceCommand("0000", "fileuri");
-        FileUpload response = mock(FileUpload.class);
-        HttpEntity entity = mock(HttpEntity.class);
-        when(response.getRequest()).thenReturn(request);
-        when(response.getHttpEntity()).thenReturn(entity);
+        FileUpload response = makeFileUploadResponse("some request id", "some file uri", "some file body");
 
         client.send(response);
-        verify(response).getHttpEntity();
 
+        HttpPost httpPost = getHttpPostFromUploadChannel();
+        assertThat(httpPost.getURI(), is(URI.create(STUB_UPLOAD_CHANNEL_URI + "&rid=some+request+id")));
+        assertThat(IOUtils.toString(httpPost.getEntity().getContent()), is("some file body"));
+    }
+
+    private FileUpload makeFileUploadResponse(String requestId, String fileUri, String bodyText)
+    {
+        GetResourceCommand request = new GetResourceCommand(requestId, fileUri);
+        FileUpload fileUpload = new FileUpload(request);
+        fileUpload.setContentStream(IOUtils.toInputStream(bodyText));
+        return fileUpload;
+    }
+
+    private HttpPost getHttpPostFromUploadChannel()
+    {
         ArgumentCaptor<HttpPost> argPost = ArgumentCaptor.forClass(HttpPost.class);
-        verify(uploadChannel).execute(argPost.capture(), Matchers.<FutureCallback<HttpResponse>>any());
-
-        HttpPost post = argPost.getValue();
-        assertEquals(client.getUploadChannelUri(request.getId()), post.getURI());
-        assertEquals(entity, post.getEntity());
+        verify(uploadChannel).execute(argPost.capture(), any());
+        return argPost.getValue();
     }
 
     private HttpResponse mockHttpResponse(int statusCode, String bodyJson)
@@ -373,18 +300,12 @@ public class CmsGatewayClientTest
 
     private Future<ResponseStatus<Void>> onUploadResponse(int statusCode, String responseJson) throws Exception
     {
-        GetResourceCommand request = new GetResourceCommand("0000", "fileuri");
-        FileUpload fileUpload = mock(FileUpload.class);
-        HttpEntity entity = mock(HttpEntity.class);
-        when(fileUpload.getRequest()).thenReturn(request);
-        when(fileUpload.getHttpEntity()).thenReturn(entity);
-
         HttpResponse response = mockHttpResponse(statusCode, responseJson);
 
         when(futureHttpResponse.get()).thenReturn(response);
         when(uploadChannel.execute(any(HttpUriRequest.class), Mockito.<FutureCallback<HttpResponse>>any())).thenReturn(futureHttpResponse);
 
-        return client.send(fileUpload);
+        return client.send(makeFileUploadResponse("some request id", "some file uri", "some body content"));
     }
 
     @Test
@@ -426,6 +347,6 @@ public class CmsGatewayClientTest
         client.close();
 
         verify(uploadChannel).close();
-        verify(transport).close();
+        verify(commandChannel).close();
     }
 }

@@ -55,10 +55,11 @@ import com.smartling.cms.gateway.client.upload.FileUpload;
  * @author p.ivashkov
  *
  * {@code
- *  CmsGatewayClient client = new CmsGatewayClient();
- *  client.setApiKey(YOUR_API_KEY);
- *  client.setProjectId(YOUR_PROJECT_ID);
- *  client.openCommandChannel(commandsHandler);
+ *  CmsGatewayClient client = CmsGatewayClientBuilder.create()
+ *      .setApiKey(YOUR_API_KEY);
+ *      .setProjectId(YOUR_PROJECT_ID);
+ *      .build();
+*   client.connect(commandHandler);
  * }
  */
 public class CmsGatewayClient implements Closeable
@@ -66,85 +67,43 @@ public class CmsGatewayClient implements Closeable
     public static final String DEFAULT_COMMAND_CHANNEL_ENDPOINT = "ws://localhost/cmd/websocket";
     public static final String DEFAULT_UPLOAD_CHANNEL_ENDPOINT = "http://localhost/upload";
 
-    private String commandChannelEndpoint = DEFAULT_COMMAND_CHANNEL_ENDPOINT;
-    private String uploadChannelEndpoint = DEFAULT_UPLOAD_CHANNEL_ENDPOINT;
-    private String apiKey;
-    private String projectId;
+    private final URI commandChannelUri;
+    private final URI uploadChannelUri;
+    private final CommandChannelTransport commandChannel;
+    private final CloseableHttpAsyncClient uploadChannel;
+    private final CommandParser commandParser;
     private CommandChannelHandler handler;
-    private CommandChannelTransport commandChannel;
-    private CommandParser commandParser = new CommandParser();
-    private CloseableHttpAsyncClient uploadChannel;
-    private FactoryHelper factoryHelper = new FactoryHelper();
 
-    static class FactoryHelper
+    public CmsGatewayClient(URI commandChannelUri, URI uploadChannelUri, CommandChannelTransport commandChannelTransport,
+            CloseableHttpAsyncClient httpAsyncClient, CommandParser commandParser)
     {
-        public CommandChannelTransport commandChannelTransport()
-        {
-            return new CommandChannelWebsocketTransport();
-        }
+        this.commandChannelUri = Validate.notNull(commandChannelUri);
+        this.uploadChannelUri = Validate.notNull(uploadChannelUri);
+        commandChannel = Validate.notNull(commandChannelTransport);
+        uploadChannel = Validate.notNull(httpAsyncClient);
+        this.commandParser = Validate.notNull(commandParser);
     }
 
-    public CmsGatewayClient()
+    public void connect(CommandChannelHandler commandChannelHandler) throws CmsGatewayClientException
     {
-    }
-
-    public String getCommandChannelEndpoint()
-    {
-        return commandChannelEndpoint;
-    }
-    public void setCommandChannelEndpoint(String value)
-    {
-        commandChannelEndpoint = Validate.notNull(value);
-    }
-
-    public void setApiKey(String value)
-    {
-        apiKey = value;
-    }
-
-    public void setProjectId(String value)
-    {
-        projectId = value;
-    }
-
-    public URI getCommandChannelUri() throws CmsGatewayClientException
-    {
-        Validate.notNull(apiKey, "Missing apiKey");
-        Validate.notNull(projectId, "Missing projectId");
+        handler = Validate.notNull(commandChannelHandler);
 
         try
         {
-            return new URIBuilder(getCommandChannelEndpoint())
-                .addParameter("key", apiKey)
-                .addParameter("projectId", projectId)
-                .build();
+            uploadChannel.start();
+            commandChannel.connectToServer(new CommandChannelTransportEndpoint(), commandChannelUri);
         }
-        catch (URISyntaxException e)
+        catch (Exception e)
         {
             throw new CmsGatewayClientException(e);
         }
     }
 
-    public void setUploadChannelEndpoint(String value)
+    private URI getUploadChannelUri(String requestId) throws CmsGatewayClientException
     {
-        Validate.notNull(value);
-        uploadChannelEndpoint = value;
-    }
-    public String getUploadChannelEndpoint()
-    {
-        return uploadChannelEndpoint;
-    }
-
-    public URI getUploadChannelUri(String requestId) throws CmsGatewayClientException
-    {
-        Validate.notNull(apiKey, "Missing apiKey");
-        Validate.notNull(projectId, "Missing projectId");
-
         try
         {
-            return new URIBuilder(getUploadChannelEndpoint())
-                .addParameter("key", apiKey)
-                .addParameter("projectId", projectId)
+            return new URIBuilder(uploadChannelUri)
                 .addParameter("rid", requestId)
                 .build();
         }
@@ -152,18 +111,6 @@ public class CmsGatewayClient implements Closeable
         {
             throw new CmsGatewayClientException(e);
         }
-    }
-
-    public void setHandler(CommandChannelHandler handler)
-    {
-        Validate.notNull(handler);
-        this.handler = handler;
-    }
-
-    public void openCommandChannel(CommandChannelHandler handler) throws CmsGatewayClientException
-    {
-        setHandler(handler);
-        reopenCommandChannel();
     }
 
     public void close() throws IOException
@@ -179,13 +126,6 @@ public class CmsGatewayClient implements Closeable
 
     public Future<ResponseStatus<Void>> send(FileUpload response) throws CmsGatewayClientException, IOException
     {
-        if (null == uploadChannel)
-        {
-            CloseableHttpAsyncClient client = HttpAsyncClients.createDefault();
-            client.start();
-            uploadChannel = client;
-        }
-
         String requestId = response.getRequest().getId();
         URI uploadUri = getUploadChannelUri(requestId);
         HttpPost post = new HttpPost(uploadUri);
@@ -242,6 +182,18 @@ public class CmsGatewayClient implements Closeable
             }
         }
 
+        private void reopenCommandChannel() throws CmsGatewayClientException
+        {
+            try
+            {
+                commandChannel.connectToServer(this, commandChannelUri);
+            }
+            catch (Throwable e)
+            {
+                throw new CmsGatewayClientException(e);
+            }
+        }
+
         private void onCommand(Session session, BaseCommand request)
         {
             switch(request.getType())
@@ -251,8 +203,10 @@ public class CmsGatewayClient implements Closeable
                 try
                 {
                     session.close(new CloseReason(CloseCodes.NORMAL_CLOSURE, "authentication error"));
-                } catch (IOException e)
-                {}
+                }
+                catch (IOException ignored)
+                {
+                }
 
                 handler.onError(new CmsGatewayClientAuthenticationException());
                 break;
@@ -269,20 +223,4 @@ public class CmsGatewayClient implements Closeable
         }
     }
 
-    private void reopenCommandChannel() throws CmsGatewayClientException
-    {
-        if (commandChannel == null)
-        {
-            commandChannel = factoryHelper.commandChannelTransport();
-        }
-
-        try
-        {
-            commandChannel.connectToServer(new CommandChannelTransportEndpoint(), getCommandChannelUri());
-        }
-        catch (Throwable e)
-        {
-            throw new CmsGatewayClientException(e);
-        }
-    }
 }
