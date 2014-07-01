@@ -419,4 +419,12 @@ public class CmsGatewayClientTest
             assertThat(clientException.getMessage(), containsString("some error message"));
         }
     }
+
+    @Test
+    public void closesCommandChannelOnClose() throws Exception
+    {
+        client.close();
+
+        verify(transport).close();
+    }
 }

@@ -15,6 +15,7 @@
  */
 package com.smartling.cms.gateway.client;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -61,7 +62,7 @@ import com.smartling.cms.gateway.client.upload.FileUpload;
  *  client.openCommandChannel(commandsHandler);
  * }
  */
-public class CmsGatewayClient
+public class CmsGatewayClient implements Closeable
 {
     public static final String DEFAULT_COMMAND_CHANNEL_ENDPOINT = "ws://localhost/cmd/websocket";
     public static final String DEFAULT_UPLOAD_CHANNEL_ENDPOINT = "http://localhost/upload";
@@ -164,6 +165,16 @@ public class CmsGatewayClient
     {
         setHandler(handler);
         reopenCommandChannel();
+    }
+
+    /**
+     * Closes command channel.
+     *
+     * This method does not cancel active uploads. An active upload should be cancelled with corresponding {@link java.util.concurrent.Future#cancel(boolean)}.
+     */
+    public void close() throws IOException
+    {
+        commandChannel.close();
     }
 
     public void send(ErrorResponse error)

@@ -15,6 +15,7 @@
  */
 package com.smartling.cms.gateway.client.internal;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.Future;
 
@@ -26,7 +27,6 @@ import javax.websocket.WebSocketContainer;
 /**
  * Websocket transport for command channel.
  *
- * @author p.ivashkov
  */
 public class CommandChannelWebsocketTransport implements CommandChannelTransport
 {
@@ -49,5 +49,11 @@ public class CommandChannelWebsocketTransport implements CommandChannelTransport
     {
         Async remote = session.getAsyncRemote();
         return remote.sendText(text);
+    }
+
+    @Override
+    public void close() throws IOException
+    {
+        session.close();
     }
 }

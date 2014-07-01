@@ -15,16 +15,17 @@
  */
 package com.smartling.cms.gateway.client.internal;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.Future;
 
 /**
  * Interface that abstracts command channel transport.
  *
- * @author p.ivashkov
  */
 public interface CommandChannelTransport
 {
     void connectToServer(Object annotatedEndpoint, URI uri) throws Exception;
+    void close() throws IOException;
     Future<Void> send(String text);
 }
