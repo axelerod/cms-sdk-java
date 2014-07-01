@@ -18,17 +18,18 @@ repositories {
 }
 
 dependencies {
-    compile group: 'log4j', name: 'log4j', version:'1.2.16'
-    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.1'
-    compile group: 'commons-io', name: 'commons-io', version: '2.4'
-    compile group: 'com.google.code.gson', name: 'gson', version:'2.2.4'
-    compile group: 'org.glassfish.tyrus', name: 'tyrus-client', version:'1.5'
-    compile group: 'org.glassfish.tyrus', name: 'tyrus-container-grizzly-client', version: '1.5'
-    compile group: 'org.apache.httpcomponents', name: 'httpasyncclient', version: '4.+'
-    compile group: 'org.apache.httpcomponents', name: 'httpmime', version: '4.+'
+    compile 'log4j:log4j:1.+'
+    compile 'org.apache.commons:commons-lang3:3.+'
+    compile 'commons-io:commons-io:2.+'
+    compile 'com.google.code.gson:gson:2.+'
+    compile 'javax.websocket:javax.websocket-api:1.0'
+    compile 'org.apache.httpcomponents:httpasyncclient:4.+'
 
-    testCompile group: 'junit', name: 'junit', version: '4.+'
-    testCompile group: 'org.mockito', name: 'mockito-core', version: '1.+'
+    runtime 'org.glassfish.tyrus:tyrus-client:1.+'
+    runtime 'org.glassfish.tyrus:tyrus-container-grizzly-client:1.+'
+
+    testCompile 'junit:junit:4.+'
+    testCompile 'org.mockito:mockito-core:1.+'
 }
 
 
