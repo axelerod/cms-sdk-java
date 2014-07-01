@@ -425,6 +425,7 @@ public class CmsGatewayClientTest
     {
         client.close();
 
+        verify(uploadChannel).close();
         verify(transport).close();
     }
 }
