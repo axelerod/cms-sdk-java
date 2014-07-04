@@ -7,7 +7,6 @@ import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
 
-import com.smartling.cms.gateway.client.command.CommandChannelHandler;
 import com.smartling.cms.gateway.client.internal.CommandChannelTransport;
 import com.smartling.cms.gateway.client.internal.CommandChannelWebsocketTransport;
 import com.smartling.cms.gateway.client.internal.CommandParser;
@@ -73,6 +72,17 @@ public class CmsGatewayClientBuilder
     public final CmsGatewayClientBuilder setCommandParser(final CommandParser commandParser)
     {
         this.commandParser = commandParser;
+        return this;
+    }
+
+    /**
+     * Sets interval to ping command channel connection.
+     * This is to prevent intermediate gateways to drop inactive websocket connection.
+     * @param heartbeatInterval Milliseconds between pings. Set to 0 to never ping.
+     */
+    public final CmsGatewayClientBuilder setDefaultHeartbeatInterval(long heartbeatInterval)
+    {
+        this.commandChannelTransport.setHeartbeatInterval(heartbeatInterval);
         return this;
     }
 

@@ -28,4 +28,6 @@ public interface CommandChannelTransport
     void connectToServer(Object annotatedEndpoint, URI uri) throws Exception;
     void close() throws IOException;
     Future<Void> send(String text);
+
+    void setHeartbeatInterval(long heartbeatInterval);
 }

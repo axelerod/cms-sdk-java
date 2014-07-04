@@ -17,6 +17,8 @@ package com.smartling.cms.gateway.client.internal;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Future;
 
 import javax.websocket.ContainerProvider;
@@ -24,14 +26,22 @@ import javax.websocket.RemoteEndpoint.Async;
 import javax.websocket.Session;
 import javax.websocket.WebSocketContainer;
 
+import org.apache.log4j.Logger;
+
 /**
  * Websocket transport for command channel.
  *
  */
 public class CommandChannelWebsocketTransport implements CommandChannelTransport
 {
+    public static final long DEFAULT_HEARTBEAT_INTERVAL = 40000;
+
+    private static final Logger logger = Logger.getLogger(CommandChannelWebsocketTransport.class);
+
     private WebSocketContainer container;
     private Session session;
+    private long heartbeatInterval = DEFAULT_HEARTBEAT_INTERVAL;
+    private Timer pingTimer = new Timer();
 
     public CommandChannelWebsocketTransport()
     {
@@ -42,6 +52,11 @@ public class CommandChannelWebsocketTransport implements CommandChannelTransport
     public void connectToServer(Object annotatedEndpoint, URI path) throws Exception
     {
         session = container.connectToServer(annotatedEndpoint, path);
+
+        if (heartbeatInterval > 0)
+        {
+            pingTimer.schedule(new PingTimerTask(), heartbeatInterval, heartbeatInterval);
+        }
     }
 
     @Override
@@ -55,5 +70,31 @@ public class CommandChannelWebsocketTransport implements CommandChannelTransport
     public void close() throws IOException
     {
         session.close();
+    }
+
+    @Override
+    public void setHeartbeatInterval(long heartbeatInterval)
+    {
+        this.heartbeatInterval = heartbeatInterval;
+    }
+
+    private class PingTimerTask extends TimerTask
+    {
+        @Override
+        public void run()
+        {
+            try
+            {
+                if (session.isOpen())
+                {
+                    // A Pong frame MAY be sent unsolicited. This serves as a unidirectional heartbeat.
+                    session.getAsyncRemote().sendPong(null);
+                }
+            }
+            catch (IOException e)
+            {
+                logger.error("Failed to pong server", e);
+            }
+        }
     }
 }
