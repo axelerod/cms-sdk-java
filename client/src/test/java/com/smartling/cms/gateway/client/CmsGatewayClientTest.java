@@ -20,6 +20,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -118,7 +119,7 @@ public class CmsGatewayClientTest
     @Test(expected = CmsGatewayClientException.class)
     public void throwsExceptionOnConnectWhenExceptionInCommandChannel() throws Exception
     {
-        doThrow(Exception.class).when(commandChannel).connectToServer(any(), any());
+        doThrow(Exception.class).when(commandChannel).connectToServer(any(), any(URI.class));
 
         client.connect(handler);
     }
@@ -161,11 +162,11 @@ public class CmsGatewayClientTest
 
         CmsGatewayClient.CommandChannelTransportEndpoint transportEndpoint = getCommandChannelTransportEndpoint();
 
-        doThrow(Throwable.class).when(commandChannel).connectToServer(any(), any());
+        doThrow(Throwable.class).when(commandChannel).connectToServer(any(), any(URI.class));
 
         transportEndpoint.onClose(null, reason);
 
-        verify(handler).onError(any());
+        verify(handler).onError(any(Throwable.class));
         verify(handler).onDisconnect();
         verifyNoMoreInteractions(handler);
     }
@@ -183,11 +184,11 @@ public class CmsGatewayClientTest
     @Test
     public void forwardsParserErrorToCommandHandler() throws Exception
     {
-        doThrow(Throwable.class).when(commandParser).parse(any());
+        doThrow(Throwable.class).when(commandParser).parse(anyString());
 
         getCommandChannelTransportEndpoint().onMessage(null, null);
 
-        verify(handler, only()).onError(any());
+        verify(handler, only()).onError(any(Throwable.class));
     }
 
     @Test
@@ -205,7 +206,7 @@ public class CmsGatewayClientTest
 
         ArgumentCaptor<CloseReason> reasonCaptor =  ArgumentCaptor.forClass(null);
         verify(session).close(reasonCaptor.capture());
-        assertThat(reasonCaptor.getValue().getCloseCode(), is(CloseReason.CloseCodes.NORMAL_CLOSURE));
+        assertThat(reasonCaptor.getValue().getCloseCode(), is((CloseReason.CloseCode)CloseReason.CloseCodes.NORMAL_CLOSURE));
 
         verify(handler, only()).onError(any(CmsGatewayClientAuthenticationException.class));
     }
@@ -217,7 +218,7 @@ public class CmsGatewayClientTest
 
         ArgumentCaptor<CloseReason> reasonCaptor =  ArgumentCaptor.forClass(null);
         verify(session).close(reasonCaptor.capture());
-        assertThat(reasonCaptor.getValue().getCloseCode(), is(CloseReason.CloseCodes.NORMAL_CLOSURE));
+        assertThat(reasonCaptor.getValue().getCloseCode(), is((CloseReason.CloseCode)CloseReason.CloseCodes.NORMAL_CLOSURE));
 
         verify(handler, only()).onError(any(CmsGatewayClientException.class));
     }
@@ -294,7 +295,7 @@ public class CmsGatewayClientTest
     private HttpPost getHttpPostFromUploadChannel()
     {
         ArgumentCaptor<HttpPost> argPost = ArgumentCaptor.forClass(HttpPost.class);
-        verify(uploadChannel).execute(argPost.capture(), any());
+        verify(uploadChannel).execute(argPost.capture(), Mockito.<FutureCallback<HttpResponse>>any());
         return argPost.getValue();
     }
 
