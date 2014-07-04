@@ -211,6 +211,18 @@ public class CmsGatewayClientTest
     }
 
     @Test
+    public void closesWebsocketAndCallsOnErrorOnDisconnectCommand() throws Exception
+    {
+        getCommandChannelTransportEndpoint().onMessage("{\"cmd\": \"disconnect\"}", session);
+
+        ArgumentCaptor<CloseReason> reasonCaptor =  ArgumentCaptor.forClass(null);
+        verify(session).close(reasonCaptor.capture());
+        assertThat(reasonCaptor.getValue().getCloseCode(), is(CloseReason.CloseCodes.NORMAL_CLOSURE));
+
+        verify(handler, only()).onError(any(CmsGatewayClientException.class));
+    }
+
+    @Test
     public void forwardsGetHtmlCommandToCommandHandler() throws Exception
     {
         getCommandChannelTransportEndpoint().onMessage("{\"cmd\":\"getHtml\", \"rid\":\"some request id\", \"uri\":\"some file uri\"}", null);

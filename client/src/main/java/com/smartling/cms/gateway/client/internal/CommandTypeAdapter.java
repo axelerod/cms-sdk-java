@@ -26,6 +26,7 @@ import com.google.gson.JsonPrimitive;
 import com.smartling.cms.gateway.client.command.AuthenticationErrorCommand;
 import com.smartling.cms.gateway.client.command.AuthenticationSuccessCommand;
 import com.smartling.cms.gateway.client.command.BaseCommand;
+import com.smartling.cms.gateway.client.command.DisconnectCommand;
 import com.smartling.cms.gateway.client.command.GetHtmlCommand;
 import com.smartling.cms.gateway.client.command.GetResourceCommand;
 
@@ -47,16 +48,14 @@ public class CommandTypeAdapter implements JsonDeserializer<BaseCommand>
         {
             String requestId = jsonObject.getAsJsonPrimitive("rid").getAsString();
             String fileUri = jsonObject.getAsJsonPrimitive("uri").getAsString();
-            GetResourceCommand command = new GetResourceCommand(requestId, fileUri);
-            return command;
+            return new GetResourceCommand(requestId, fileUri);
         }
 
         if (commandName.equalsIgnoreCase("getHtml"))
         {
             String requestId = jsonObject.getAsJsonPrimitive("rid").getAsString();
             String fileUri = jsonObject.getAsJsonPrimitive("uri").getAsString();
-            GetHtmlCommand command = new GetHtmlCommand(requestId, fileUri);
-            return command;
+            return new GetHtmlCommand(requestId, fileUri);
         }
 
         if (commandName.equalsIgnoreCase("authenticationSuccess"))
@@ -67,6 +66,13 @@ public class CommandTypeAdapter implements JsonDeserializer<BaseCommand>
         if (commandName.equalsIgnoreCase("authenticationError"))
         {
             return new AuthenticationErrorCommand();
+        }
+
+        if (commandName.equalsIgnoreCase("disconnect"))
+        {
+            JsonPrimitive reason = jsonObject.getAsJsonPrimitive("message");
+            String message = reason == null ? null : reason.getAsString();
+            return new DisconnectCommand(message);
         }
 
         throw new JsonParseException("Unknown command " + commandName);

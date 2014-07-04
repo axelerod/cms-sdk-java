@@ -28,6 +28,7 @@ public abstract class BaseCommand
 {
     public static enum Type
     {
+        DISCONNECT(-2),
         AUTHENTICATION_ERROR(-1),
         AUTHENTICATION_SUCCESS(1),
         GET_HTML(2),

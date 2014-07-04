@@ -24,27 +24,24 @@ import java.util.concurrent.Future;
 import javax.websocket.ClientEndpoint;
 import javax.websocket.CloseReason;
 import javax.websocket.CloseReason.CloseCodes;
-import javax.websocket.EndpointConfig;
 import javax.websocket.OnClose;
 import javax.websocket.OnError;
 import javax.websocket.OnMessage;
-import javax.websocket.OnOpen;
 import javax.websocket.Session;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
-import org.apache.http.impl.nio.client.HttpAsyncClients;
 
 import com.smartling.cms.gateway.client.api.model.ResponseStatus;
 import com.smartling.cms.gateway.client.command.BaseCommand;
 import com.smartling.cms.gateway.client.command.CommandChannelHandler;
+import com.smartling.cms.gateway.client.command.DisconnectCommand;
 import com.smartling.cms.gateway.client.command.ErrorResponse;
 import com.smartling.cms.gateway.client.command.GetHtmlCommand;
 import com.smartling.cms.gateway.client.command.GetResourceCommand;
 import com.smartling.cms.gateway.client.internal.CommandChannelTransport;
-import com.smartling.cms.gateway.client.internal.CommandChannelWebsocketTransport;
 import com.smartling.cms.gateway.client.internal.CommandParser;
 import com.smartling.cms.gateway.client.internal.ResponseStatusFuture;
 import com.smartling.cms.gateway.client.upload.FileUpload;
@@ -136,11 +133,6 @@ public class CmsGatewayClient implements Closeable
     @ClientEndpoint
     public class CommandChannelTransportEndpoint
     {
-        @OnOpen
-        public void onOpen(Session session, EndpointConfig config)
-        {
-        }
-
         @OnClose
         public void onClose(Session session, CloseReason reason)
         {
@@ -198,16 +190,13 @@ public class CmsGatewayClient implements Closeable
         {
             switch(request.getType())
             {
+            case DISCONNECT:
+                closeSession(session, new CloseReason(CloseCodes.NORMAL_CLOSURE, "disconnect command"));
+                String disconnectReason = String.format("Disconnect command: %s", ((DisconnectCommand)request).getReasonMessage());
+                handler.onError(new CmsGatewayClientException(disconnectReason));
+                break;
             case AUTHENTICATION_ERROR:
-
-                try
-                {
-                    session.close(new CloseReason(CloseCodes.NORMAL_CLOSURE, "authentication error"));
-                }
-                catch (IOException ignored)
-                {
-                }
-
+                closeSession(session, new CloseReason(CloseCodes.NORMAL_CLOSURE, "authentication error"));
                 handler.onError(new CmsGatewayClientAuthenticationException());
                 break;
             case AUTHENTICATION_SUCCESS:
@@ -219,6 +208,17 @@ public class CmsGatewayClient implements Closeable
             case GET_RESOURCE:
                 handler.onGetResourceCommand((GetResourceCommand) request);
                 break;
+            }
+        }
+
+        private void closeSession(Session session, CloseReason closeReason)
+        {
+            try
+            {
+                session.close(closeReason);
+            }
+            catch (IOException ignored)
+            {
             }
         }
     }
