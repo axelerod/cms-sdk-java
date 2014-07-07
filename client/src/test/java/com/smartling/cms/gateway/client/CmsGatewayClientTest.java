@@ -62,6 +62,7 @@ import com.smartling.cms.gateway.client.command.CommandChannelHandler;
 import com.smartling.cms.gateway.client.command.ErrorResponse;
 import com.smartling.cms.gateway.client.command.GetHtmlCommand;
 import com.smartling.cms.gateway.client.command.GetResourceCommand;
+import com.smartling.cms.gateway.client.internal.CommandChannelSession;
 import com.smartling.cms.gateway.client.internal.CommandChannelTransport;
 import com.smartling.cms.gateway.client.internal.CommandParser;
 import com.smartling.cms.gateway.client.upload.FileUpload;
@@ -72,10 +73,13 @@ public class CmsGatewayClientTest
     private static final URI STUB_UPLOAD_CHANNEL_URI = URI.create("some_upload_channel_uri?projectId=some+project+id");
 
     @Mock
+    private CommandChannelTransport commandChannelTransport;
+
+    @Mock
     private CommandChannelHandler handler;
 
     @Mock
-    private CommandChannelTransport commandChannel;
+    private CommandChannelSession commandChannel;
 
     @Mock
     private CloseableHttpAsyncClient uploadChannel;
@@ -97,7 +101,9 @@ public class CmsGatewayClientTest
     {
         MockitoAnnotations.initMocks(this);
 
-        client = new CmsGatewayClient(STUB_COMMAND_CHANNEL_URI, STUB_UPLOAD_CHANNEL_URI, commandChannel, uploadChannel, commandParser);
+        when(commandChannelTransport.connectToServer(anyObject(), any(URI.class))).thenReturn(commandChannel);
+
+        client = new CmsGatewayClient(STUB_COMMAND_CHANNEL_URI, STUB_UPLOAD_CHANNEL_URI, commandChannelTransport, uploadChannel, commandParser);
     }
     
 	@Test
@@ -105,7 +111,7 @@ public class CmsGatewayClientTest
 	{
 	    client.connect(handler);
 
-	    verify(commandChannel).connectToServer(anyObject(), eq(STUB_COMMAND_CHANNEL_URI));
+	    verify(commandChannelTransport).connectToServer(anyObject(), eq(STUB_COMMAND_CHANNEL_URI));
 	}
 
     @Test
@@ -119,7 +125,7 @@ public class CmsGatewayClientTest
     @Test(expected = CmsGatewayClientException.class)
     public void throwsExceptionOnConnectWhenExceptionInCommandChannel() throws Exception
     {
-        doThrow(Exception.class).when(commandChannel).connectToServer(any(), any(URI.class));
+        doThrow(Exception.class).when(commandChannelTransport).connectToServer(any(), any(URI.class));
 
         client.connect(handler);
     }
@@ -130,7 +136,7 @@ public class CmsGatewayClientTest
 
         client.connect(handler);
 
-        verify(commandChannel).connectToServer(captor.capture(), any(URI.class));
+        verify(commandChannelTransport).connectToServer(captor.capture(), any(URI.class));
         return captor.getValue();
     }
 
@@ -151,7 +157,7 @@ public class CmsGatewayClientTest
 
         getCommandChannelTransportEndpoint().onClose(null, reason);
 
-        verify(commandChannel, times(2)).connectToServer(anyObject(), eq(STUB_COMMAND_CHANNEL_URI));
+        verify(commandChannelTransport, times(2)).connectToServer(anyObject(), eq(STUB_COMMAND_CHANNEL_URI));
         verifyZeroInteractions(handler);
     }
 
@@ -162,7 +168,7 @@ public class CmsGatewayClientTest
 
         CmsGatewayClient.CommandChannelTransportEndpoint transportEndpoint = getCommandChannelTransportEndpoint();
 
-        doThrow(Throwable.class).when(commandChannel).connectToServer(any(), any(URI.class));
+        doThrow(Throwable.class).when(commandChannelTransport).connectToServer(any(), any(URI.class));
 
         transportEndpoint.onClose(null, reason);
 
@@ -262,15 +268,22 @@ public class CmsGatewayClientTest
     }
 
     @Test
-    public void sendsErrorResponseJsonToCommandChannel()
+    public void sendsErrorResponseJsonToCommandChannel() throws Exception
     {
         ErrorResponse error = new ErrorResponse(new GetResourceCommand("some request id", "some file uri"));
         String expectedJson = error.toJSONString();
 
-        client.send(error);
+        getConnectedClient().send(error);
 
         verify(commandChannel).send(expectedJson);
     }
+
+    private CmsGatewayClient getConnectedClient() throws Exception
+    {
+        client.connect(handler);
+        return client;
+    }
+
 
     @Test
     public void postsFileContentsToUploadChannel() throws Exception
@@ -357,7 +370,7 @@ public class CmsGatewayClientTest
     @Test
     public void closesCommandChannelOnClose() throws Exception
     {
-        client.close();
+        getConnectedClient().close();
 
         verify(uploadChannel).close();
         verify(commandChannel).close();

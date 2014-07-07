@@ -3,6 +3,8 @@ package com.smartling.cms.gateway.client;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import javax.websocket.ContainerProvider;
+
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
@@ -20,12 +22,13 @@ public class CmsGatewayClientBuilder
     private String uploadChannelEndpoint = CmsGatewayClient.DEFAULT_UPLOAD_CHANNEL_ENDPOINT;
     private String apiKey;
     private String projectId;
-    private CommandChannelTransport commandChannelTransport = new CommandChannelWebsocketTransport();
+    private CommandChannelTransport commandChannelTransport;
     private CloseableHttpAsyncClient uploadChannelTransport;
     private CommandParser commandParser = new CommandParser();
 
     protected CmsGatewayClientBuilder()
     {
+        commandChannelTransport = new CommandChannelWebsocketTransport(ContainerProvider.getWebSocketContainer());
     }
 
     public static CmsGatewayClientBuilder create()

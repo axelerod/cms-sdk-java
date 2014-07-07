@@ -41,6 +41,7 @@ import com.smartling.cms.gateway.client.command.DisconnectCommand;
 import com.smartling.cms.gateway.client.command.ErrorResponse;
 import com.smartling.cms.gateway.client.command.GetHtmlCommand;
 import com.smartling.cms.gateway.client.command.GetResourceCommand;
+import com.smartling.cms.gateway.client.internal.CommandChannelSession;
 import com.smartling.cms.gateway.client.internal.CommandChannelTransport;
 import com.smartling.cms.gateway.client.internal.CommandParser;
 import com.smartling.cms.gateway.client.internal.ResponseStatusFuture;
@@ -66,9 +67,10 @@ public class CmsGatewayClient implements Closeable
 
     private final URI commandChannelUri;
     private final URI uploadChannelUri;
-    private final CommandChannelTransport commandChannel;
+    private final CommandChannelTransport commandChannelTransport;
     private final CloseableHttpAsyncClient uploadChannel;
     private final CommandParser commandParser;
+    private CommandChannelSession commandChannel;
     private CommandChannelHandler handler;
 
     public CmsGatewayClient(URI commandChannelUri, URI uploadChannelUri, CommandChannelTransport commandChannelTransport,
@@ -76,7 +78,7 @@ public class CmsGatewayClient implements Closeable
     {
         this.commandChannelUri = Validate.notNull(commandChannelUri);
         this.uploadChannelUri = Validate.notNull(uploadChannelUri);
-        commandChannel = Validate.notNull(commandChannelTransport);
+        this.commandChannelTransport = Validate.notNull(commandChannelTransport);
         uploadChannel = Validate.notNull(httpAsyncClient);
         this.commandParser = Validate.notNull(commandParser);
     }
@@ -88,7 +90,7 @@ public class CmsGatewayClient implements Closeable
         try
         {
             uploadChannel.start();
-            commandChannel.connectToServer(new CommandChannelTransportEndpoint(), commandChannelUri);
+            commandChannel = commandChannelTransport.connectToServer(new CommandChannelTransportEndpoint(), commandChannelUri);
         }
         catch (Exception e)
         {
@@ -178,7 +180,7 @@ public class CmsGatewayClient implements Closeable
         {
             try
             {
-                commandChannel.connectToServer(this, commandChannelUri);
+                commandChannel = commandChannelTransport.connectToServer(this, commandChannelUri);
             }
             catch (Throwable e)
             {

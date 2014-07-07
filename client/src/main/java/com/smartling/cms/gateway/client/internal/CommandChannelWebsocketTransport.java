@@ -21,11 +21,11 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.Future;
 
-import javax.websocket.ContainerProvider;
 import javax.websocket.RemoteEndpoint.Async;
 import javax.websocket.Session;
 import javax.websocket.WebSocketContainer;
 
+import org.apache.commons.lang3.Validate;
 import org.apache.log4j.Logger;
 
 /**
@@ -38,38 +38,19 @@ public class CommandChannelWebsocketTransport implements CommandChannelTransport
 
     private static final Logger logger = Logger.getLogger(CommandChannelWebsocketTransport.class);
 
-    private WebSocketContainer container;
-    private Session session;
+    private final WebSocketContainer container;
     private long heartbeatInterval = DEFAULT_HEARTBEAT_INTERVAL;
-    private Timer pingTimer = new Timer();
 
-    public CommandChannelWebsocketTransport()
+    public CommandChannelWebsocketTransport(WebSocketContainer container)
     {
-        container = ContainerProvider.getWebSocketContainer();
+        this.container = Validate.notNull(container);
     }
 
     @Override
-    public void connectToServer(Object annotatedEndpoint, URI path) throws Exception
+    public CommandChannelSession connectToServer(Object annotatedEndpoint, URI path) throws Exception
     {
-        session = container.connectToServer(annotatedEndpoint, path);
-
-        if (heartbeatInterval > 0)
-        {
-            pingTimer.schedule(new PingTimerTask(), heartbeatInterval, heartbeatInterval);
-        }
-    }
-
-    @Override
-    public Future<Void> send(String text)
-    {
-        Async remote = session.getAsyncRemote();
-        return remote.sendText(text);
-    }
-
-    @Override
-    public void close() throws IOException
-    {
-        session.close();
+        Session session = container.connectToServer(annotatedEndpoint, path);
+        return new WebsocketSession(session, heartbeatInterval);
     }
 
     @Override
@@ -78,23 +59,55 @@ public class CommandChannelWebsocketTransport implements CommandChannelTransport
         this.heartbeatInterval = heartbeatInterval;
     }
 
-    private class PingTimerTask extends TimerTask
+
+    private static class WebsocketSession implements CommandChannelSession
     {
-        @Override
-        public void run()
+        private final Session session;
+        private final Timer pingTimer = new Timer();
+
+        private WebsocketSession(Session session, long heartbeatInterval)
         {
-            try
+            this.session = Validate.notNull(session);
+
+            if (heartbeatInterval > 0)
             {
-                if (session.isOpen())
-                {
-                    // A Pong frame MAY be sent unsolicited. This serves as a unidirectional heartbeat.
-                    session.getAsyncRemote().sendPong(null);
-                }
+                pingTimer.schedule(new PingTimerTask(), heartbeatInterval, heartbeatInterval);
             }
-            catch (IOException e)
+        }
+
+        @Override
+        public Future<Void> send(String text)
+        {
+            Async remote = session.getAsyncRemote();
+            return remote.sendText(text);
+        }
+
+        @Override
+        public void close() throws IOException
+        {
+            session.close();
+            pingTimer.cancel();
+        }
+
+        private class PingTimerTask extends TimerTask
+        {
+            @Override
+            public void run()
             {
-                logger.error("Failed to pong server", e);
+                try
+                {
+                    if (session.isOpen())
+                    {
+                        // A Pong frame MAY be sent unsolicited. This serves as a unidirectional heartbeat.
+                        session.getAsyncRemote().sendPong(null);
+                    }
+                }
+                catch (IOException e)
+                {
+                    logger.error("Failed to pong server", e);
+                }
             }
         }
     }
+
 }

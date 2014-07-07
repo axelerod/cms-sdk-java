@@ -15,15 +15,13 @@
  */
 package com.smartling.cms.gateway.client.internal;
 
-import java.net.URI;
+import java.io.Closeable;
+import java.util.concurrent.Future;
 
 /**
- * Interface that abstracts command channel transport.
- *
+ * Interface that abstracts command channel session.
  */
-public interface CommandChannelTransport
+public interface CommandChannelSession extends Closeable
 {
-    CommandChannelSession connectToServer(Object annotatedEndpoint, URI uri) throws Exception;
-
-    void setHeartbeatInterval(long heartbeatInterval);
+    Future<Void> send(String text);
 }
