@@ -25,6 +25,7 @@ import static org.mockito.Mockito.mock;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
+import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.junit.Before;
@@ -52,7 +53,7 @@ public class FileUploadTest
     @Test
     public void entityContainsCorrectContentType() throws Exception
     {
-        response.setContentStream(new ByteArrayInputStream("ignored".getBytes()));
+        response.setContentStream(new ByteArrayInputStream("ignored".getBytes(Charsets.UTF_8)));
 
         response.setContentType("some-content-type", "UTF-8");
         HttpEntity entity = response.getHttpEntity();
@@ -63,7 +64,7 @@ public class FileUploadTest
     @Test
     public void entityContainsResourceBody() throws Exception
     {
-        response.setContentStream(new ByteArrayInputStream("body".getBytes()));
+        response.setContentStream(new ByteArrayInputStream("body".getBytes(Charsets.UTF_8)));
 
         HttpEntity entity = response.getHttpEntity();
 
@@ -73,7 +74,7 @@ public class FileUploadTest
     @Test
     public void entityEncodingIsChunkedAsStreamsAreUsed() throws Exception
     {
-        response.setContentStream(new ByteArrayInputStream("ignored".getBytes()));
+        response.setContentStream(new ByteArrayInputStream("ignored".getBytes(Charsets.UTF_8)));
 
         HttpEntity entity = response.getHttpEntity();
 

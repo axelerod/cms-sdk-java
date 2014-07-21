@@ -7,6 +7,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.commons.io.Charsets;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
 
@@ -84,7 +85,7 @@ public class ResponseStatusFuture implements Future<ResponseStatus<Void>>
     private ResponseStatus<Void> responseStatus(HttpResponse httpResponse) throws IOException, CmsGatewayClientException
     {
         int statusCode = httpResponse.getStatusLine().getStatusCode();
-        InputStreamReader streamReader = new InputStreamReader(httpResponse.getEntity().getContent());
+        InputStreamReader streamReader = new InputStreamReader(httpResponse.getEntity().getContent(), Charsets.UTF_8);
         Gson gson = new Gson();
         ResponseWrapper wrapper = gson.fromJson(streamReader, ResponseWrapper.class);
 

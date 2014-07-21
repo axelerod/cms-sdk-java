@@ -1,4 +1,5 @@
 apply plugin: 'java'
+apply plugin: 'findbugs'
 apply from: 'gradle/exec.gradle'
 
 def groupId = "com.smartling.cmsgateway"
@@ -49,4 +50,8 @@ jar {
 
 test {
     reports.junitXml.destination = file("${rootDir}/tests-output")
+}
+
+findbugs {
+    toolVersion = '3.+'
 }

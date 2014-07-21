@@ -69,7 +69,7 @@ public class ErrorResponse extends Response
         obj.addProperty("rid", getRequest().getId());
         obj.addProperty("uri", getRequest().getUri());
         if (httpCode != 0)
-            obj.addProperty("httpCode", new Integer(httpCode));
+            obj.addProperty("httpCode", httpCode);
         if (messages != null)
         {
             Type typeOfSrc = new TypeToken<Collection<String>>(){}.getType();
