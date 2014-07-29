@@ -31,12 +31,11 @@ dependencies {
     runtime 'org.glassfish.tyrus:tyrus-client:1.+'
     runtime 'org.glassfish.tyrus:tyrus-container-grizzly-client:1.+'
 
-    testCompile 'junit:junit:4.+'
+    testCompile 'junit:junit:4.11'
     testCompile 'org.mockito:mockito-core:1.+'
     testCompile 'org.powermock:powermock-api-mockito:1.+'
     testCompile 'org.powermock:powermock-module-junit4:1.+'
 }
-
 
 jar {
     manifest {
