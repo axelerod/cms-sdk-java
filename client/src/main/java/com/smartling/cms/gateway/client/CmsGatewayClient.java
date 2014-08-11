@@ -41,6 +41,7 @@ import com.smartling.cms.gateway.client.command.DisconnectCommand;
 import com.smartling.cms.gateway.client.command.ErrorResponse;
 import com.smartling.cms.gateway.client.command.GetHtmlCommand;
 import com.smartling.cms.gateway.client.command.GetResourceCommand;
+import com.smartling.cms.gateway.client.command.ReconnectStrategy;
 import com.smartling.cms.gateway.client.internal.CommandChannelSession;
 import com.smartling.cms.gateway.client.internal.CommandChannelTransport;
 import com.smartling.cms.gateway.client.internal.CommandParser;
@@ -70,32 +71,27 @@ public class CmsGatewayClient implements Closeable
     private final CommandChannelTransport commandChannelTransport;
     private final CloseableHttpAsyncClient uploadChannel;
     private final CommandParser commandParser;
+    private final ReconnectStrategy reconnectStrategy;
+    private ConnectionManager connectionManager;
     private CommandChannelSession commandChannel;
     private CommandChannelHandler handler;
 
     public CmsGatewayClient(URI commandChannelUri, URI uploadChannelUri, CommandChannelTransport commandChannelTransport,
-            CloseableHttpAsyncClient httpAsyncClient, CommandParser commandParser)
+            CloseableHttpAsyncClient httpAsyncClient, CommandParser commandParser, ReconnectStrategy reconnectStrategy)
     {
         this.commandChannelUri = Validate.notNull(commandChannelUri);
         this.uploadChannelUri = Validate.notNull(uploadChannelUri);
         this.commandChannelTransport = Validate.notNull(commandChannelTransport);
         uploadChannel = Validate.notNull(httpAsyncClient);
         this.commandParser = Validate.notNull(commandParser);
+        this.reconnectStrategy = Validate.notNull(reconnectStrategy);
     }
 
     public void connect(CommandChannelHandler commandChannelHandler) throws CmsGatewayClientException
     {
         handler = Validate.notNull(commandChannelHandler);
-
-        try
-        {
-            uploadChannel.start();
-            commandChannel = commandChannelTransport.connectToServer(new CommandChannelTransportEndpoint(), commandChannelUri);
-        }
-        catch (Exception e)
-        {
-            throw new CmsGatewayClientException(e);
-        }
+        connectionManager = new ConnectionManager(reconnectStrategy.reset(), new CommandChannelTransportEndpoint());
+        commandChannel = connectionManager.reconnect();
     }
 
     private URI getUploadChannelUri(String requestId) throws CmsGatewayClientException
@@ -132,26 +128,63 @@ public class CmsGatewayClient implements Closeable
         return new ResponseStatusFuture(uploadChannel.execute(post, null));
     }
 
+
+    private class ConnectionManager
+    {
+        private final ReconnectStrategy reconnectStrategy;
+        private final CommandChannelTransportEndpoint commandChannelTransportEndpoint;
+
+        public ConnectionManager(ReconnectStrategy reconnectStrategy, CommandChannelTransportEndpoint commandChannelTransportEndpoint)
+        {
+            this.reconnectStrategy = reconnectStrategy;
+            this.commandChannelTransportEndpoint = commandChannelTransportEndpoint;
+        }
+
+        public CommandChannelSession reconnect() throws CmsGatewayClientException
+        {
+            uploadChannel.start();
+            do
+            {
+                try
+                {
+                    reconnectStrategy.delay();
+                    return commandChannelTransport.connectToServer(commandChannelTransportEndpoint, commandChannelUri);
+                }
+                catch (IOException e)
+                {
+                    reconnectStrategy.observeError(e);
+                }
+                catch (InterruptedException e)
+                {
+                    reconnectStrategy.observeError(e);
+                }
+            }
+            while (reconnectStrategy.shouldRetry());
+
+            throw new CmsGatewayClientException(reconnectStrategy.getLastError());
+        }
+    }
+
+
     @ClientEndpoint
     public class CommandChannelTransportEndpoint
     {
         @OnClose
         public void onClose(Session session, CloseReason reason)
         {
-            if (!reason.getCloseCode().equals(CloseCodes.NORMAL_CLOSURE))
+            if (reason.getCloseCode().equals(CloseCodes.NORMAL_CLOSURE))
             {
-                try
-                {
-                    reopenCommandChannel();
-                }
-                catch (CmsGatewayClientException e)
-                {
-                    handler.onError(e);
-                    handler.onDisconnect();
-                }
+                handler.onDisconnect();
+                return;
             }
-            else
+
+            try
             {
+                connectionManager.reconnect();
+            }
+            catch (Exception e)
+            {
+                handler.onError(e);
                 handler.onDisconnect();
             }
         }
@@ -173,18 +206,6 @@ public class CmsGatewayClient implements Closeable
             catch (Throwable e)
             {
                 handler.onError(e);
-            }
-        }
-
-        private void reopenCommandChannel() throws CmsGatewayClientException
-        {
-            try
-            {
-                commandChannel = commandChannelTransport.connectToServer(this, commandChannelUri);
-            }
-            catch (Throwable e)
-            {
-                throw new CmsGatewayClientException(e);
             }
         }
 

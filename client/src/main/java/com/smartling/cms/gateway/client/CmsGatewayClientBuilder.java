@@ -9,6 +9,7 @@ import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
 
+import com.smartling.cms.gateway.client.command.ReconnectStrategy;
 import com.smartling.cms.gateway.client.internal.CommandChannelTransport;
 import com.smartling.cms.gateway.client.internal.CommandChannelWebsocketTransport;
 import com.smartling.cms.gateway.client.internal.CommandParser;
@@ -25,6 +26,7 @@ public class CmsGatewayClientBuilder
     private CommandChannelTransport commandChannelTransport;
     private CloseableHttpAsyncClient uploadChannelTransport;
     private CommandParser commandParser = new CommandParser();
+    private ReconnectStrategy reconnectStrategy = new ReconnectStrategy();
 
     protected CmsGatewayClientBuilder()
     {
@@ -78,6 +80,12 @@ public class CmsGatewayClientBuilder
         return this;
     }
 
+    public final CmsGatewayClientBuilder setReconnectStrategy(ReconnectStrategy reconnectStrategy)
+    {
+        this.reconnectStrategy = reconnectStrategy;
+        return this;
+    }
+
     /**
      * Sets interval to ping command channel connection.
      * This is to prevent intermediate gateways to drop inactive websocket connection.
@@ -102,7 +110,8 @@ public class CmsGatewayClientBuilder
                 getUploadChannelUri(),
                 commandChannelTransport,
                 uploadChannel,
-                commandParser
+                commandParser,
+                reconnectStrategy
         );
     }
 

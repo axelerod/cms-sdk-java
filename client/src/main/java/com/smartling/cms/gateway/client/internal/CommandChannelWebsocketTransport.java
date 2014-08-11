@@ -21,12 +21,15 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.Future;
 
+import javax.websocket.DeploymentException;
 import javax.websocket.RemoteEndpoint.Async;
 import javax.websocket.Session;
 import javax.websocket.WebSocketContainer;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.log4j.Logger;
+
+import com.smartling.cms.gateway.client.CmsGatewayClientException;
 
 /**
  * Websocket transport for command channel.
@@ -47,10 +50,18 @@ public class CommandChannelWebsocketTransport implements CommandChannelTransport
     }
 
     @Override
-    public CommandChannelSession connectToServer(Object annotatedEndpoint, URI path) throws Exception
+    public CommandChannelSession connectToServer(Object annotatedEndpoint, URI path) throws IOException, CmsGatewayClientException
     {
-        Session session = container.connectToServer(annotatedEndpoint, path);
-        return new WebsocketSession(session, heartbeatInterval);
+        logger.debug(String.format("Connecting to command channel at %s", path));
+        try
+        {
+            Session session = container.connectToServer(annotatedEndpoint, path);
+            return new WebsocketSession(session, heartbeatInterval);
+        }
+        catch (DeploymentException e)
+        {
+            throw new CmsGatewayClientException(e);
+        }
     }
 
     @Override

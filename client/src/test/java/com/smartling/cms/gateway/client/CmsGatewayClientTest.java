@@ -62,6 +62,7 @@ import com.smartling.cms.gateway.client.command.CommandChannelHandler;
 import com.smartling.cms.gateway.client.command.ErrorResponse;
 import com.smartling.cms.gateway.client.command.GetHtmlCommand;
 import com.smartling.cms.gateway.client.command.GetResourceCommand;
+import com.smartling.cms.gateway.client.command.ReconnectStrategy;
 import com.smartling.cms.gateway.client.internal.CommandChannelSession;
 import com.smartling.cms.gateway.client.internal.CommandChannelTransport;
 import com.smartling.cms.gateway.client.internal.CommandParser;
@@ -103,7 +104,7 @@ public class CmsGatewayClientTest
 
         when(commandChannelTransport.connectToServer(anyObject(), any(URI.class))).thenReturn(commandChannel);
 
-        client = new CmsGatewayClient(STUB_COMMAND_CHANNEL_URI, STUB_UPLOAD_CHANNEL_URI, commandChannelTransport, uploadChannel, commandParser);
+        client = new CmsGatewayClient(STUB_COMMAND_CHANNEL_URI, STUB_UPLOAD_CHANNEL_URI, commandChannelTransport, uploadChannel, commandParser, new ReconnectStrategy());
     }
     
 	@Test
@@ -125,7 +126,7 @@ public class CmsGatewayClientTest
     @Test(expected = CmsGatewayClientException.class)
     public void throwsExceptionOnConnectWhenExceptionInCommandChannel() throws Exception
     {
-        doThrow(Exception.class).when(commandChannelTransport).connectToServer(any(), any(URI.class));
+        doThrow(CmsGatewayClientException.class).when(commandChannelTransport).connectToServer(any(), any(URI.class));
 
         client.connect(handler);
     }
@@ -168,7 +169,7 @@ public class CmsGatewayClientTest
 
         CmsGatewayClient.CommandChannelTransportEndpoint transportEndpoint = getCommandChannelTransportEndpoint();
 
-        doThrow(Throwable.class).when(commandChannelTransport).connectToServer(any(), any(URI.class));
+        doThrow(CmsGatewayClientException.class).when(commandChannelTransport).connectToServer(any(), any(URI.class));
 
         transportEndpoint.onClose(null, reason);
 

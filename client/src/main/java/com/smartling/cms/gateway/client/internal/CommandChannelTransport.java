@@ -15,7 +15,10 @@
  */
 package com.smartling.cms.gateway.client.internal;
 
+import java.io.IOException;
 import java.net.URI;
+
+import com.smartling.cms.gateway.client.CmsGatewayClientException;
 
 /**
  * Interface that abstracts command channel transport.
@@ -23,7 +26,7 @@ import java.net.URI;
  */
 public interface CommandChannelTransport
 {
-    CommandChannelSession connectToServer(Object annotatedEndpoint, URI uri) throws Exception;
+    CommandChannelSession connectToServer(Object annotatedEndpoint, URI uri) throws IOException, CmsGatewayClientException;
 
     void setHeartbeatInterval(long heartbeatInterval);
 }
