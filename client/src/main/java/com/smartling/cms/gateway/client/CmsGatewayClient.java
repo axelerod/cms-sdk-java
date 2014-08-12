@@ -148,7 +148,9 @@ public class CmsGatewayClient implements Closeable
                 try
                 {
                     reconnectStrategy.delay();
-                    return commandChannelTransport.connectToServer(commandChannelTransportEndpoint, commandChannelUri);
+                    CommandChannelSession session = commandChannelTransport.connectToServer(commandChannelTransportEndpoint, commandChannelUri);
+                    reconnectStrategy.reset();
+                    return session;
                 }
                 catch (IOException e)
                 {
