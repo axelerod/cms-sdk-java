@@ -177,13 +177,16 @@ public class CmsGatewayClientTest
 
         CmsGatewayClient.CommandChannelTransportEndpoint transportEndpoint = getCommandChannelTransportEndpoint();
 
-        doThrow(CmsGatewayClientException.class).when(commandChannelTransport).connectToServer(any(), any(URI.class));
+        reset(commandChannelTransport);
+        when(commandChannelTransport.connectToServer(anyObject(), any(URI.class)))
+                .thenThrow(mock(IOException.class))
+                .thenThrow(mock(CmsGatewayClientException.class));
 
         transportEndpoint.onClose(null, reason);
 
-        verify(handler).onError(any(Throwable.class));
+        verify(commandChannelTransport, times(2)).connectToServer(anyObject(), eq(STUB_COMMAND_CHANNEL_URI));
+        verify(handler).onError(any(CmsGatewayClientException.class));
         verify(handler).onDisconnect();
-        verifyNoMoreInteractions(handler);
     }
 
     @Test
@@ -196,11 +199,12 @@ public class CmsGatewayClientTest
         reset(commandChannelTransport);
         when(commandChannelTransport.connectToServer(anyObject(), any(URI.class)))
                 .thenThrow(mock(IOException.class))
+                .thenThrow(mock(IOException.class))
                 .thenReturn(commandChannel);
 
         transportEndpoint.onClose(null, reason);
 
-        verify(commandChannelTransport, times(2)).connectToServer(anyObject(), eq(STUB_COMMAND_CHANNEL_URI));
+        verify(commandChannelTransport, times(3)).connectToServer(anyObject(), eq(STUB_COMMAND_CHANNEL_URI));
         verify(handler, never()).onDisconnect();
     }
 
