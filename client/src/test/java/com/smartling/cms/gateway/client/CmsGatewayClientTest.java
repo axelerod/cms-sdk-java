@@ -22,15 +22,19 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.only;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -88,6 +92,9 @@ public class CmsGatewayClientTest
     @Spy
     private CommandParser commandParser;
 
+    @Spy
+    private ReconnectStrategy reconnectStrategy;
+
     @Mock
     private Future<HttpResponse> futureHttpResponse;
 
@@ -103,8 +110,9 @@ public class CmsGatewayClientTest
         MockitoAnnotations.initMocks(this);
 
         when(commandChannelTransport.connectToServer(anyObject(), any(URI.class))).thenReturn(commandChannel);
+        doNothing().when(reconnectStrategy).delay();
 
-        client = new CmsGatewayClient(STUB_COMMAND_CHANNEL_URI, STUB_UPLOAD_CHANNEL_URI, commandChannelTransport, uploadChannel, commandParser, new ReconnectStrategy());
+        client = new CmsGatewayClient(STUB_COMMAND_CHANNEL_URI, STUB_UPLOAD_CHANNEL_URI, commandChannelTransport, uploadChannel, commandParser, reconnectStrategy);
     }
     
 	@Test
@@ -176,6 +184,24 @@ public class CmsGatewayClientTest
         verify(handler).onError(any(Throwable.class));
         verify(handler).onDisconnect();
         verifyNoMoreInteractions(handler);
+    }
+
+    @Test
+    public void reconnectsAfterFailedAttemptOnIOException() throws Exception
+    {
+        CloseReason reason = new CloseReason(CloseReason.CloseCodes.CLOSED_ABNORMALLY, null);
+
+        CmsGatewayClient.CommandChannelTransportEndpoint transportEndpoint = getCommandChannelTransportEndpoint();
+
+        reset(commandChannelTransport);
+        when(commandChannelTransport.connectToServer(anyObject(), any(URI.class)))
+                .thenThrow(mock(IOException.class))
+                .thenReturn(commandChannel);
+
+        transportEndpoint.onClose(null, reason);
+
+        verify(commandChannelTransport, times(2)).connectToServer(anyObject(), eq(STUB_COMMAND_CHANNEL_URI));
+        verify(handler, never()).onDisconnect();
     }
 
     @Test

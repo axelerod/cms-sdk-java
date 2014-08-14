@@ -33,6 +33,7 @@ import org.apache.commons.lang3.Validate;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.log4j.Logger;
 
 import com.smartling.cms.gateway.client.api.model.ResponseStatus;
 import com.smartling.cms.gateway.client.command.BaseCommand;
@@ -65,6 +66,8 @@ public class CmsGatewayClient implements Closeable
 {
     public static final String DEFAULT_COMMAND_CHANNEL_ENDPOINT = "ws://localhost/cmd/websocket";
     public static final String DEFAULT_UPLOAD_CHANNEL_ENDPOINT = "http://localhost/upload";
+
+    private static final Logger logger = Logger.getLogger(CmsGatewayClient.class);
 
     private final URI commandChannelUri;
     private final URI uploadChannelUri;
@@ -155,10 +158,12 @@ public class CmsGatewayClient implements Closeable
                 catch (IOException e)
                 {
                     reconnectStrategy.observeError(e);
+                    logger.warn("Failed on reconnect", e);
                 }
                 catch (InterruptedException e)
                 {
                     reconnectStrategy.observeError(e);
+                    logger.debug("Interrupted reconnect", e);
                 }
             }
             while (reconnectStrategy.shouldRetry());
