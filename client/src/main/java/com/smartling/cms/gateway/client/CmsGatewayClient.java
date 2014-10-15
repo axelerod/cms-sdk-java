@@ -78,6 +78,7 @@ public class CmsGatewayClient implements Closeable
     private ConnectionManager connectionManager;
     private CommandChannelSession commandChannel;
     private CommandChannelHandler handler;
+    private boolean closed;
 
     public CmsGatewayClient(URI commandChannelUri, URI uploadChannelUri, CommandChannelTransport commandChannelTransport,
             CloseableHttpAsyncClient httpAsyncClient, CommandParser commandParser, ReconnectStrategy reconnectStrategy)
@@ -92,9 +93,17 @@ public class CmsGatewayClient implements Closeable
 
     public void connect(CommandChannelHandler commandChannelHandler) throws CmsGatewayClientException
     {
+        failIfClosed();
+
         handler = Validate.notNull(commandChannelHandler);
         connectionManager = new ConnectionManager(reconnectStrategy.reset(), new CommandChannelTransportEndpoint());
         commandChannel = connectionManager.reconnect();
+    }
+
+    private void failIfClosed()
+    {
+        if (closed)
+            throw new IllegalStateException("Client is closed");
     }
 
     private URI getUploadChannelUri(String requestId) throws CmsGatewayClientException
@@ -113,17 +122,21 @@ public class CmsGatewayClient implements Closeable
 
     public void close() throws IOException
     {
+        closed = true;
         uploadChannel.close();
         commandChannel.close();
     }
 
     public void send(ErrorResponse error)
     {
+        failIfClosed();
         commandChannel.send(error.toJSONString());
     }
 
     public Future<ResponseStatus<Void>> send(FileUpload response) throws CmsGatewayClientException, IOException
     {
+        failIfClosed();
+
         String requestId = response.getRequest().getId();
         URI uploadUri = getUploadChannelUri(requestId);
         HttpPost post = new HttpPost(uploadUri);

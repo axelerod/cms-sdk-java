@@ -406,4 +406,22 @@ public class CmsGatewayClientTest
         verify(uploadChannel).close();
         verify(commandChannel).close();
     }
+
+    @Test(expected = IllegalStateException.class)
+    public void throwsWhenTryingToConnectClosedClient() throws Exception
+    {
+        CmsGatewayClient connectedClient = getConnectedClient();
+        connectedClient.close();
+
+        connectedClient.connect(handler);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void throwsWhenTryingToSendOnClosedClient() throws Exception
+    {
+        CmsGatewayClient connectedClient = getConnectedClient();
+        connectedClient.close();
+
+        connectedClient.send(mock(ErrorResponse.class));
+    }
 }
