@@ -19,13 +19,13 @@ import java.io.IOException;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.CharEncoding;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.http.client.entity.EntityBuilder;
 import org.apache.http.entity.ContentType;
 
 import com.google.gson.JsonObject;
 import com.smartling.cms.gateway.client.command.BaseCommand;
-import com.smartling.cms.gateway.client.upload.FileUpload;
 
 /**
  * Response for HTML file upload.
@@ -42,6 +42,7 @@ import com.smartling.cms.gateway.client.upload.FileUpload;
 public class HtmlUpload extends FileUpload
 {
     private String baseUrl;
+    private String publicUrl;
 
     public HtmlUpload(BaseCommand request)
     {
@@ -57,6 +58,15 @@ public class HtmlUpload extends FileUpload
         return baseUrl;
     }
 
+    public void setPublicUrl(String value)
+    {
+        publicUrl = value;
+    }
+    public String getPublicUrl()
+    {
+        return publicUrl;
+    }
+
     public void setBody(String value) throws IOException
     {
         Validate.notNull(value);
@@ -69,6 +79,9 @@ public class HtmlUpload extends FileUpload
         JsonObject response = new JsonObject();
         response.addProperty("baseUrl", baseUrl);
         response.addProperty("body", IOUtils.toString(getInputStream()));
+
+        if (StringUtils.isNotEmpty(publicUrl))
+            response.addProperty("publicUrl", publicUrl);
 
         return EntityBuilder.create()
                 .setContentType(ContentType.APPLICATION_JSON)

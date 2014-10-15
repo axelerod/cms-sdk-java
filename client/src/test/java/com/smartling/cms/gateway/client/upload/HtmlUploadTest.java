@@ -18,6 +18,8 @@ package com.smartling.cms.gateway.client.upload;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.io.IOException;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.junit.Before;
@@ -32,6 +34,8 @@ import com.smartling.cms.gateway.client.command.GetResourceCommand;
 
 public class HtmlUploadTest
 {
+    private static final String NO_PUBLIC_URL = "";
+
     @Mock
     private GetResourceCommand resourceCommand;
 
@@ -57,19 +61,30 @@ public class HtmlUploadTest
     @Test
     public void returnsJsonWithResourceBodyAndBaseUrl() throws Exception
     {
-        response.setBody("resource body");
-        response.setBaseUrl("base url");
+        JsonObject json = responseWith("resource body", "base url", NO_PUBLIC_URL);
+
+        assertEquals("resource body", json.get("body").getAsString());
+        assertEquals("base url", json.get("baseUrl").getAsString());
+    }
+
+    private JsonObject responseWith(String body, String baseUrl, String publicUrl) throws IOException
+    {
+        response.setBody(body);
+        response.setBaseUrl(baseUrl);
+        if (!publicUrl.equals(NO_PUBLIC_URL))
+            response.setPublicUrl(publicUrl);
 
         HttpEntity entity = response.getHttpEntity();
 
         JsonParser parser = new JsonParser();
-        JsonObject json = (JsonObject)parser.parse(IOUtils.toString(entity.getContent()));
-
-        assertNotNull(json.get("body"));
-        assertEquals("resource body", json.get("body").getAsString());
-
-        assertNotNull(json.get("baseUrl"));
-        assertEquals("base url", json.get("baseUrl").getAsString());
+        return (JsonObject)parser.parse(IOUtils.toString(entity.getContent()));
     }
 
+    @Test
+    public void returnsJsonWithOptionalPublicUrl() throws Exception
+    {
+        JsonObject json = responseWith("ignore", "ignore", "another url");
+
+        assertEquals("another url", json.get("publicUrl").getAsString());
+    }
 }
