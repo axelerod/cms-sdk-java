@@ -2,14 +2,15 @@ ext.exec = { command ->
     def output = new StringBuilder()
     def error = new StringBuilder()
 
-    def cmd = ["/bin/sh", "-c", "${command}"].toArray()
+    boolean isWindows = System.properties['os.name'].toLowerCase().contains('windows')
+    def cmd = isWindows ? ["cmd", "/c", "${command}"] : ["/bin/sh", "-c", "${command}"]
 
-    def process = Runtime.runtime.exec(cmd as String[])
+    def process = Runtime.runtime.exec(cmd.toArray() as String[])
 
     process.consumeProcessOutput(output, error)
 
     def ret = process.waitFor()
-    if(0 != ret) {
+    if (0 != ret) {
         throw new RuntimeException("Failed to execute command '${command}': ${error}")
     }
 
