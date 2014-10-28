@@ -1,6 +1,8 @@
 apply plugin: 'java'
+apply plugin: 'maven'
 apply plugin: 'findbugs'
 apply from: 'gradle/exec.gradle'
+apply from: 'gradle/checksums.gradle'
 
 def groupId = "com.smartling.cmsgateway"
 def artifactId = "cmsgateway-client"
@@ -9,6 +11,7 @@ archivesBaseName = "cmsgateway-client"
 
 sourceCompatibility = '1.6'
 
+group = groupId
 
 def getVersion() {
     return exec('git describe --tags --long --dirty').trim().replace("-", ".")
@@ -17,7 +20,7 @@ def getVersion() {
 version = getVersion()
 
 repositories {
-  mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
@@ -41,9 +44,9 @@ jar {
     manifest {
         attributes 'Built-By': System.getProperty('user.name')
         attributes 'Implementation-Title': 'CmsGateway Client Library',
-            'Implementation-Version': "${version} " + new Date(),
-            'Implementation-Vendor': 'Smartling Inc.',
-            'com/smartling/cmsgateway/client/'
+                'Implementation-Version': "${version} " + new Date(),
+                'Implementation-Vendor': 'Smartling Inc.',
+                'com/smartling/cmsgateway/client/'
     }
 }
 
